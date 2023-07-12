@@ -223,11 +223,19 @@ defer:
     return out;
 }
 
-int pst_extract_items(item_enumerator *ie) {
 
 
+void item_enumerator_destroy(item_enumerator * ie) {
+    pst_item ** lst = ie->items;
+
+    while(*lst) {
+        pst_freeItem(*(lst++));
+    }
+
+    pst_close(&ie->file);
+    free(ie->items);
+    free(ie);
 }
-
 
 int main(int argc, char* const* argv) {
     if (argc < 2) {

@@ -15,3 +15,6 @@ build_pst:
 	cd deps/$(PST_DIR) && ./configure --enable-python=no
 	cd deps/$(PST_DIR) && make
 
+build:
+	gcc -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pst.c -o test.bin
+
