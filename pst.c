@@ -43,9 +43,12 @@ typedef struct item_enumerator {
 
 item_enumerator * item_enumerator_new(unsigned capacity) {
     item_enumerator * ret = calloc(1, sizeof(item_enumerator));
-    ret->capacity = (capacity || 1024) -1;
+    ret->capacity = (capacity > 1 ? 1024 : 1);
+
     ret->items = calloc(capacity, sizeof(pst_item*));
     ret->used = 0;
+
+    return ret;
 }
 
 void item_enumerator_add(item_enumerator * self, pst_item* item) {
@@ -244,6 +247,42 @@ int main(int argc, char* const* argv) {
 
     const char * path = argv[1];
     item_enumerator * ie = pst_list(path);
+
+    pst_item ** lst = ie->items;
+
+    while(*lst) { //  pst_convert_utf8(item, &item->contact->fullname)
+        //pst_convert_utf8_null(*lst, &((*lst)->contact->fullname));
+        pst_item * item = *lst;
+
+        if (item->message_store) {
+            // there should only be one message_store, and we have already done it
+            printf("A second message_store has been found. Sorry, this must be an error.\n");
+        }
+        else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
+            pst_convert_utf8_null(*lst, &((*lst)->subject));
+            printf("\tSubject: %s\n", item->subject.str);
+        }
+        else if (item->folder) {
+            pst_convert_utf8_null(*lst, &((*lst)->file_as));
+            printf("LST: folder? %s\n", item->file_as.str);
+        }
+        else if (item->journal && (item->type == PST_TYPE_JOURNAL)) {
+
+        }
+        else if (item->appointment && (item->type == PST_TYPE_APPOINTMENT)) {
+
+        }
+        else if (item->message_store) {
+
+        }
+        else {
+            printf(("Unknown item type %i (%s) name (%s)\n",
+                        item->type, item->ascii_type, item->file_as.str));
+        }
+
+        lst++;
+    }
+
 
     item_enumerator_destroy(ie);
 
