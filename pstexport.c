@@ -10,6 +10,13 @@
 #include "lzfu.h"
 #include "msg.h"
 
+typedef struct pst_export {
+  // global settings
+  pst_export_conf conf;
+  pst_file    pstfile;
+  regex_t     meta_charset_pattern;
+} pst_export;
+
 #define OUTPUT_TEMPLATE "%s.%s"
 #define OUTPUT_KMAIL_DIR_TEMPLATE ".%s.directory"
 #define KMAIL_INDEX "../.%s.index"
@@ -115,10 +122,10 @@ char*  output_dir = ".";
 #define RTF_ATTACH_TYPE "application/rtf"
 
 
-void write_email_body(FILE *f, char *body) {
+void write_email_body(pst_export * self, FILE *f, char *body) {
     char *n = body;
     DEBUG_ENT("write_email_body");
-    if (mode != MODE_SEPARATE) {
+    if (self->conf->mode != MODE_SEPARATE) {
         while (n) {
             char *p = body;
             while (*p == '>') p++;
@@ -161,49 +168,6 @@ void version() {
 #endif
     DEBUG_RET();
 }
-
-void mk_kmail_dir(char *fname) {
-    //make a directory based on OUTPUT_KMAIL_DIR_TEMPLATE
-    //change to that directory
-    char *dir, *index;
-    int x;
-    DEBUG_ENT("mk_kmail_dir");
-    dir = pst_malloc(strlen(fname)+strlen(OUTPUT_KMAIL_DIR_TEMPLATE)+1);
-    sprintf(dir, OUTPUT_KMAIL_DIR_TEMPLATE, fname);
-    check_filename(dir);
-    if (D_MKDIR(dir)) {
-        if (errno != EEXIST) {  // not an error because it exists
-            x = errno;
-            DIE(("mk_kmail_dir: Cannot create directory %s: %s\n", dir, strerror(x)));
-        }
-    }
-    if (chdir(dir)) {
-        x = errno;
-        DIE(("mk_kmail_dir: Cannot change to directory %s: %s\n", dir, strerror(x)));
-    }
-    free (dir);
-
-    //we should remove any existing indexes created by KMail, cause they might be different now
-    index = pst_malloc(strlen(fname)+strlen(KMAIL_INDEX)+1);
-    sprintf(index, KMAIL_INDEX, fname);
-    unlink(index);
-    free(index);
-
-    DEBUG_RET();
-}
-
-
-int close_kmail_dir() {
-    int x;
-    DEBUG_ENT("close_kmail_dir");
-    if (chdir("..")) {
-        x = errno;
-        DIE(("close_kmail_dir: Cannot move up dir (..): %s\n", strerror(x)));
-    }
-    DEBUG_RET();
-    return 0;
-}
-
 
 char *item_type_to_name(int32_t item_type) {
     char *name;
@@ -248,142 +212,6 @@ int32_t reduced_item_type(int32_t item_type) {
             break;
     }
     return reduced;
-}
-
-
-// this will create a directory by that name
-void mk_recurse_dir(char *dir) {
-    int x;
-    DEBUG_ENT("mk_recurse_dir");
-    check_filename(dir);
-    if (D_MKDIR (dir)) {
-        if (errno != EEXIST) {  // not an error because it exists
-            x = errno;
-            DIE(("mk_recurse_dir: Cannot create directory %s: %s\n", dir, strerror(x)));
-        }
-    }
-    if (chdir(dir)) {
-        x = errno;
-        DIE(("mk_recurse_dir: Cannot change to directory %s: %s\n", dir, strerror(x)));
-    }
-    DEBUG_RET();
-}
-
-
-int close_recurse_dir() {
-    int x;
-    DEBUG_ENT("close_recurse_dir");
-    if (chdir("..")) {
-        x = errno;
-        DIE(("close_recurse_dir: Cannot go up dir (..): %s\n", strerror(x)));
-    }
-    DEBUG_RET();
-    return 0;
-}
-
-
-void mk_separate_dir(char *dir) {
-    size_t dirsize = strlen(dir) + 10;
-    char dir_name[dirsize];
-    int x = 0, y = 0;
-
-    DEBUG_ENT("mk_separate_dir");
-    do {
-        if (y == 0)
-            snprintf(dir_name, dirsize, "%s", dir);
-        else
-            snprintf(dir_name, dirsize, "%s" SEP_MAIL_FILE_TEMPLATE, dir, y, ""); // enough for 9 digits allocated above
-
-        check_filename(dir_name);
-        DEBUG_INFO(("about to try creating %s\n", dir_name));
-        if (D_MKDIR(dir_name)) {
-            if (errno != EEXIST) { // if there is an error, and it doesn't already exist
-                x = errno;
-                DIE(("mk_separate_dir: Cannot create directory %s: %s\n", dir, strerror(x)));
-            }
-        } else {
-            break;
-        }
-        y++;
-    } while (overwrite == 0);
-
-    if (chdir(dir_name)) {
-        x = errno;
-        DIE(("mk_separate_dir: Cannot change to directory %s: %s\n", dir, strerror(x)));
-    }
-
-    if (overwrite) {
-        // we should probably delete all files from this directory
-#if !defined(WIN32) && !defined(__CYGWIN__)
-        DIR * sdir = NULL;
-        struct dirent *dirent = NULL;
-        struct stat filestat;
-        if (!(sdir = opendir("./"))) {
-            DEBUG_WARN(("mk_separate_dir: Cannot open dir \"%s\" for deletion of old contents\n", "./"));
-        } else {
-            while ((dirent = readdir(sdir))) {
-                if (lstat(dirent->d_name, &filestat) != -1)
-                    if (S_ISREG(filestat.st_mode)) {
-                        if (unlink(dirent->d_name)) {
-                            y = errno;
-                            DIE(("mk_separate_dir: unlink returned error on file %s: %s\n", dirent->d_name, strerror(y)));
-                        }
-                    }
-            }
-            closedir(sdir);     // cppcheck detected leak
-        }
-#endif
-    }
-
-    DEBUG_RET();
-}
-
-
-int close_separate_dir() {
-    int x;
-    DEBUG_ENT("close_separate_dir");
-    if (chdir("..")) {
-        x = errno;
-        DIE(("close_separate_dir: Cannot go up dir (..): %s\n", strerror(x)));
-    }
-    DEBUG_RET();
-    return 0;
-}
-
-
-void mk_separate_file(struct file_ll *f, int32_t t, char *extension, int openit) {
-    DEBUG_ENT("mk_separate_file");
-    DEBUG_INFO(("opening next file to save email type %s\n", item_type_to_name(t)));
-    if (f->item_count > 999999999) { // bigger than nine 9's
-        DIE(("mk_separate_file: The number of emails in this folder has become too high to handle\n"));
-    }
-    sprintf(f->name[t], SEP_MAIL_FILE_TEMPLATE, f->item_count, extension);
-    check_filename(f->name[t]);
-    if (openit) {
-        if (!(f->output[t] = fopen(f->name[t], "w"))) {
-            DIE(("mk_separate_file: Cannot open file to save email \"%s\"\n", f->name[t]));
-        }
-    }
-    DEBUG_RET();
-}
-
-
-void close_separate_file(struct file_ll *f) {
-    int32_t t;
-    DEBUG_ENT("close_separate_file");
-    for (t=0; t<PST_TYPE_MAX; t++) {
-        if (f->output[t]) {
-            struct stat st;
-            fclose(f->output[t]);
-            stat(f->name[t], &st);
-            if (!st.st_size) {
-                DEBUG_WARN(("removing empty output file %s\n", f->name[t]));
-                remove(f->name[t]);
-            }
-            f->output[t] = NULL;
-        }
-    }
-    DEBUG_RET();
 }
 
 
@@ -1834,12 +1662,7 @@ int pst_export_conf_check (pst_export_conf c) {
   return 1;
 }
 
-typedef struct pst_export {
-  // global settings
-  pst_export_conf conf;
-  pst_file    pstfile;
-  regex_t     meta_charset_pattern;
-} pst_export;
+
 
 pst_export * pst_export_new(pst_export_conf conf) {
   if (!pst_export_conf_check(conf)) {
