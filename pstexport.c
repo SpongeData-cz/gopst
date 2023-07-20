@@ -261,9 +261,9 @@ void check_filename(char *fname) {
  * @param attach  pst attachment object
  * @return        true if the attachment filename contains an extension that we want.
  */
-int  acceptable_ext(pst_item_attach* attach)
+int  acceptable_ext(pst_export * self, pst_item_attach* attach)
 {
-    if (!acceptable_extensions || *acceptable_extensions == '\0') return 1;     // acceptable list missing or empty
+    if (!self->conf.acceptable_extensions || *(self->conf.acceptable_extensions) == '\0') return 1;     // acceptable list missing or empty
     char *attach_filename = (attach->filename2.str) ? attach->filename2.str
                                                     : attach->filename1.str;
     if (!attach_filename) return 1; // attachment with no name is always acceptable
@@ -272,7 +272,7 @@ int  acceptable_ext(pst_item_attach* attach)
     DEBUG_ENT("acceptable_ext");
     DEBUG_INFO(("attachment extension %s\n", e));
     int rc = 0;
-    char *a = acceptable_extensions;
+    char *a = self->conf.acceptable_extensions;
     while (*a) {
         if (pst_stricmp(a, e) == 0) {
             rc = 1;
@@ -705,14 +705,14 @@ void find_rfc822_headers(char** extra_mime_headers)
 }
 
 
-void write_body_part(FILE* f_output, pst_string *body, char *mime, char *charset, char *boundary, pst_file* pst)
+void write_body_part(pst_export * self, FILE* f_output, pst_string *body, char *mime, char *charset, char *boundary, pst_file* pst)
 {
     DEBUG_ENT("write_body_part");
     removeCR(body->str);
     size_t body_len = strlen(body->str);
 
     if (body->is_utf8 && (strcasecmp("utf-8", charset))) {
-        if (prefer_utf8) {
+        if (self->conf.prefer_utf8) {
             charset = "utf-8";
         } else {
             // try to convert to the specified charset since the target
@@ -801,7 +801,7 @@ void write_schedule_part(FILE* f_output, pst_item* item, const char* sender, con
 }
 
 
-void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode, int mode_MH, pst_file* pst, int save_rtf, int embedding, char** extra_mime_headers)
+void write_normal_email(pst_export * self, FILE* f_output, char f_name[], pst_item* item, int mode, int mode_MH, pst_file* pst, int save_rtf, int embedding, char** extra_mime_headers)
 {
     char boundary[60];
     char altboundary[66];
@@ -921,7 +921,7 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
         DEBUG_INFO(("item->subject = %s\n", item->subject.str));
     }
 
-    if (mode != MODE_SEPARATE) {
+    if (self->conf.mode != MODE_SEPARATE) {
         // most modes need this separator line.
         // procmail produces this separator without the quotes around the
         // sender email address, but apparently some Mac email client needs
@@ -1116,7 +1116,7 @@ void write_normal_email(FILE* f_output, char f_name[], pst_item* item, int mode,
             }
             else if (attach->data.data || attach->i_id) {
                 if (acceptable_ext(attach)) {
-                    if (mode == MODE_SEPARATE && !mode_MH)
+                    if (self->conf.mode == MODE_SEPARATE && !self->conf.mode_MH)
                         write_separate_attachment(f_name, attach, ++attach_num, pst);
                     else
                         write_inline_attachment(f_output, attach, boundary, pst);
@@ -1464,7 +1464,7 @@ void write_appointment(FILE* f_output, pst_item* item)
 }
 
 
-void create_enter_dir(struct file_ll* f, pst_item *item)
+void create_enter_dir(pst_export * self, struct file_ll* f, pst_item *item)
 {
     memset(f, 0, sizeof(*f));
     f->stored_count = (item->folder) ? item->folder->item_count : 0;
@@ -1473,7 +1473,7 @@ void create_enter_dir(struct file_ll* f, pst_item *item)
     strcpy(f->dname, item->file_as.str);
 
     DEBUG_ENT("create_enter_dir");
-    if (mode == MODE_KMAIL) {
+    if (self->conf.mode == MODE_KMAIL) {
         int32_t t;
         mk_kmail_dir(item->file_as.str);
         for (t=0; t<PST_TYPE_MAX; t++) {
@@ -1482,7 +1482,7 @@ void create_enter_dir(struct file_ll* f, pst_item *item)
                 sprintf(f->name[t], OUTPUT_TEMPLATE, item->file_as.str, item_type_to_name(t));
             }
         }
-    } else if (mode == MODE_RECURSE) {
+    } else if (self->conf.mode == MODE_RECURSE) {
         int32_t t;
         mk_recurse_dir(item->file_as.str);
         for (t=0; t<PST_TYPE_MAX; t++) {
@@ -1490,19 +1490,19 @@ void create_enter_dir(struct file_ll* f, pst_item *item)
                 f->name[t] = strdup(item_type_to_name(t));
             }
         }
-        if (mode_thunder) {
+        if (self->conf.mode_thunder) {
             FILE *type_file = fopen(".type", "w");
             fprintf(type_file, "%d\n", item->type);
             fclose(type_file);
         }
-    } else if (mode == MODE_SEPARATE) {
+    } else if (self->conf.mode == MODE_SEPARATE) {
         // do similar stuff to recurse here.
         int32_t t;
         mk_separate_dir(item->file_as.str);
         for (t=0; t<PST_TYPE_MAX; t++) {
             if (t == reduced_item_type(t)) {
-                f->name[t] = (char*) pst_malloc(file_name_len);
-                memset(f->name[t], 0, file_name_len);
+                f->name[t] = (char*) pst_malloc(self->conf.file_name_len);
+                memset(f->name[t], 0, self->conf.file_name_len);
             }
         }
     } else {
@@ -1516,11 +1516,11 @@ void create_enter_dir(struct file_ll* f, pst_item *item)
         }
     }
 
-    if (mode != MODE_SEPARATE) {
+    if (self->conf.mode != MODE_SEPARATE) {
         int32_t t;
         for (t=0; t<PST_TYPE_MAX; t++) {
             if (f->name[t]) {
-                if (!overwrite) {
+                if (!self->conf.overwrite) {
                     int x = 0;
                     char *temp = (char*) pst_malloc (strlen(f->name[t])+10); //enough room for 10 digits
 
@@ -1555,12 +1555,12 @@ void create_enter_dir(struct file_ll* f, pst_item *item)
 }
 
 
-void close_enter_dir(struct file_ll *f)
+void close_enter_dir(pst_export * self, struct file_ll *f)
 {
     int32_t t;
     DEBUG_INFO(("processed item count for folder %s is %i, skipped %i, total %i \n",
                 f->dname, f->item_count, f->skip_count, f->stored_count));
-    if (output_mode != OUTPUT_QUIET) {
+    if (self->conf.output_mode != OUTPUT_QUIET) {
         pst_debug_lock();
             printf("\t\"%s\" - %i items done, %i items skipped.\n", f->dname, f->item_count, f->skip_count);
             fflush(stdout);
@@ -1568,7 +1568,7 @@ void close_enter_dir(struct file_ll *f)
     }
     for (t=0; t<PST_TYPE_MAX; t++) {
         if (f->output[t]) {
-            if (mode == MODE_SEPARATE) DEBUG_WARN(("close_enter_dir finds open separate file\n"));
+            if (self->conf.mode == MODE_SEPARATE) DEBUG_WARN(("close_enter_dir finds open separate file\n"));
             fclose(f->output[t]);
             f->output[t] = NULL;
         }
@@ -1585,16 +1585,16 @@ void close_enter_dir(struct file_ll *f)
     }
     free(f->dname);
 
-    if (mode == MODE_KMAIL)
+    if (self->conf.mode == MODE_KMAIL)
         close_kmail_dir();
-    else if (mode == MODE_RECURSE) {
-        if (mode_thunder) {
+    else if (self->conf.mode == MODE_RECURSE) {
+        if (self->conf.mode_thunder) {
             FILE *type_file = fopen(".size", "w");
             fprintf(type_file, "%i %i\n", f->item_count, f->stored_count);
             fclose(type_file);
         }
         close_recurse_dir();
-    } else if (mode == MODE_SEPARATE)
+    } else if (self->conf.mode == MODE_SEPARATE)
         close_separate_dir();
 }
 
@@ -1608,13 +1608,13 @@ typedef struct pst_export_conf {
   int         mode_MSG     = 0;   // a submode of MODE_SEPARATE
   int         mode_thunder = 0;   // a submode of MODE_RECURSE
   int         output_mode  = OUTPUT_NORMAL;
-  int         contact_mode = CMODE_VCARD;
-  int         deleted_mode = DMODE_EXCLUDE;
-  int         output_type_mode = 0xff;    // Default to all.
-  int         contact_mode_specified = 0;
+  int         contact_mode = CMODE_VCARD; // not used within the code
+  int         deleted_mode = DMODE_EXCLUDE; // not used within the code
+  int         output_type_mode = 0xff;    // Default to all. not used within the code
+  int         contact_mode_specified = 0; // not used within the code
   int         overwrite = 0;
   int         prefer_utf8 = 0;
-  int         save_rtf_body = 1;
+  int         save_rtf_body = 1; // unused
   int         file_name_len = 10;     // enough room for MODE_SPEARATE file name
   char*       acceptable_extensions = NULL;
 } pst_export_conf;
