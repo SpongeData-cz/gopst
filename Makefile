@@ -16,5 +16,5 @@ build_pst:
 	cd deps/$(PST_DIR) && make
 
 build:
-	gcc -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pst.c -o test.bin
+	gcc -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pst.c pstexport.c -o test.bin
 
