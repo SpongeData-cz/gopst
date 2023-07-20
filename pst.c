@@ -9,8 +9,18 @@
 #include <regex.h>
 #include <string.h>
 #include "define.h"
+#include "pst.h"
 
 struct file_ll {
+    char *name[PST_TYPE_MAX];
+    char *dname;
+    FILE * output[PST_TYPE_MAX];
+    int32_t stored_count;
+    int32_t item_count;
+    int32_t skip_count;
+};
+
+struct file_lls {
     char *dname;
     int32_t stored_count;
     int32_t item_count;
@@ -18,21 +28,6 @@ struct file_ll {
     int32_t type;
 };
 
-void create_enter_dir(struct file_ll* f, pst_item *item)
-{
-    pst_convert_utf8(item, &item->file_as);
-    f->item_count   = 0;
-    f->skip_count   = 0;
-    f->type         = item->type;
-    f->stored_count = (item->folder) ? item->folder->item_count : 0;
-    f->dname        = strdup(item->file_as.str);
-}
-
-
-void close_enter_dir(struct file_ll *f)
-{
-    free(f->dname);
-}
 
 typedef struct item_enumerator {
     pst_item ** items;
@@ -71,7 +66,7 @@ void item_enumerator_add(item_enumerator * self, pst_item* item) {
 #define ERROR_INDEX_LOAD 4
 
 int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr) {
-    struct file_ll ff;
+    struct file_lls ff;
     pst_item *item = NULL;
     char *result = NULL;
     size_t resultlen = 0;
@@ -229,7 +224,7 @@ defer:
 }
 
 
-void item_enumerator_destroy(item_enumerator * ie) {
+int item_enumerator_destroy(item_enumerator * ie) {
     pst_item ** lst = ie->items;
 
     while(*lst) {
@@ -276,16 +271,41 @@ typedef struct pst_message {
 } pst_message;
 
 
-/** *** WRITE EML PART ***/
+#define NO_ERROR 0
+#define PST_MESSAGE_ERROR_FILE_ERROR 1
+#define PST_MESSAGE_ERROR_UNSUPPORTED_PARAM 2
+// returns written size?
+int pst_message_to_file(pst_message * self, pst_export *pe, int * error) {
+    FILE * output = fopen(self->r.renaming, "w+");
+    *error = NO_ERROR;
 
+    if (!output) {
+        *error = PST_MESSAGE_ERROR_FILE_ERROR;
+        return 0;
+    }
 
+    if (!(pe->conf.output_type_mode & OTMODE_EMAIL)) {
+        return 0;
+    }
+    else {
+        char *extra_mime_headers = NULL;
+        pst_item * item = self->r.pi;
+        pst_export_conf pec = pe->conf;
 
-char * pst_message_to_string(pst_message * self, int * error) {
-    *error = 0;
+        if (pe->conf.mode == MODE_SEPARATE) {
+            *error = PST_MESSAGE_ERROR_UNSUPPORTED_PARAM;
+            return 0;
+        }
+        else {
+            // process this single email message, cannot fork since not separate mode
+            write_normal_email(pe, output, "attachment", item, pec.mode,
+                pec.mode_MH, &(self->r.pf), pec.save_rtf_body, 0, &extra_mime_headers);
+            fclose(output);
+            return 1;
+        }
+    }
 
-    // c
-
-    return NULL; // doing nothing
+    return 0; // doing nothing
 }
 
 
@@ -294,6 +314,11 @@ typedef struct pst_folder {
 
     char * path;
 } pst_folder;
+
+int pst_folder_to_file(pst_folder * self, pst_export *pe, int * error) {
+    *error = NO_ERROR;
+    return 0; // unimplemented no reason
+}
 
 
 typedef struct pst_journal {
