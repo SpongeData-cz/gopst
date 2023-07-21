@@ -11,15 +11,6 @@
 #include "define.h"
 #include "pst.h"
 
-struct file_ll {
-    char *name[PST_TYPE_MAX];
-    char *dname;
-    FILE * output[PST_TYPE_MAX];
-    int32_t stored_count;
-    int32_t item_count;
-    int32_t skip_count;
-};
-
 struct file_lls {
     char *dname;
     int32_t stored_count;
@@ -27,7 +18,6 @@ struct file_lls {
     int32_t skip_count;
     int32_t type;
 };
-
 
 typedef struct item_enumerator {
     pst_item ** items;
@@ -59,7 +49,7 @@ void item_enumerator_add(item_enumerator * self, pst_item* item) {
     self->items[self->used++] = item;
 }
 
-#define NO_ERROR
+#define NO_ERROR 0
 #define ERROR_NOT_UNIQUE_MSG_STORE 1
 #define ERROR_ROOT_NOT_FOUND 2
 #define ERROR_OPEN 3
@@ -74,12 +64,12 @@ int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr
 
     DEBUG_ENT("pst_list_impl");
     memset(&ff, 0, sizeof(ff));
-    create_enter_dir(&ff, outeritem); // just description not dir
+    //create_enter_dir(&ff, outeritem); // just description not dir
 
     while (d_ptr) {
         if (!d_ptr->desc) {
             DEBUG_WARN(("ERROR item's desc record is NULL\n"));
-            ff.skip_count++;
+            //ff.skip_count++;
         }
         else {
             item = pst_parse_item(&ie->file, d_ptr, NULL);
@@ -162,7 +152,7 @@ int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr
         }
         d_ptr = d_ptr->next;
     }
-    close_enter_dir(&ff);
+    // close_enter_dir(&ff);
     if (result) free(result);
     DEBUG_RET();
 }
@@ -240,7 +230,7 @@ int item_enumerator_destroy(item_enumerator * ie) {
 #define PST_MESSAGE 1 << 1
 #define PST_FOLDER 1 << 2
 #define PST_JOURNAL 1 << 3
-#define PST_TYPE_APPOINTMENT 1 << 4
+#define PST_APPOINTMENT 1 << 4
 
 typedef struct pst_record
 {
@@ -271,7 +261,6 @@ typedef struct pst_message {
 } pst_message;
 
 
-#define NO_ERROR 0
 #define PST_MESSAGE_ERROR_FILE_ERROR 1
 #define PST_MESSAGE_ERROR_UNSUPPORTED_PARAM 2
 // returns written size?
@@ -299,7 +288,7 @@ int pst_message_to_file(pst_message * self, pst_export *pe, int * error) {
         else {
             // process this single email message, cannot fork since not separate mode
             write_normal_email(pe, output, "attachment", item, pec.mode,
-                pec.mode_MH, &(self->r.pf), pec.save_rtf_body, 0, &extra_mime_headers);
+                pec.mode_MH, self->r.pf, pec.save_rtf_body, 0, &extra_mime_headers);
             fclose(output);
             return 1;
         }

@@ -14,6 +14,24 @@
 #include "msg.h"
 #include "pst.h"
 
+extern pst_export_conf pst_export_conf_default = {
+  .mode = MODE_NORMAL,
+  .mode_MH = 0,
+  .mode_EX = 0,
+  .mode_MSG = 0,
+  .mode_thunder = 0,
+  .output_mode = OUTPUT_NORMAL,
+  .contact_mode = CMODE_VCARD,
+  .deleted_mode = DMODE_EXCLUDE,
+  .output_type_mode = 0xff, // all
+  .contact_mode_specified = 0,
+  .overwrite = 0,
+  .prefer_utf8 = 0,
+  .save_rtf_body = 1,
+  .file_name_len = 10,
+  .acceptable_extensions = NULL
+};
+
 
 
 void write_email_body(pst_export * self, FILE *f, char *body) {
