@@ -328,16 +328,15 @@ pst_folder * pst_folder_new(pst_record pr) {
     return out;
 };
 
-
 int pst_folder_to_file(pst_folder * self, pst_export *pe, int * error) {
     *error = NO_ERROR;
-    return 0; // unimplemented no reason
+    return 0; // unimplemented no reason - folder isnt file
 }
-
 
 typedef struct pst_journal {
     pst_record r;
 } pst_journal;
+
 
 pst_journal * pst_journal_new(pst_record pr) {
     pst_journal * out = calloc(1, sizeof(pst_journal));
@@ -346,6 +345,47 @@ pst_journal * pst_journal_new(pst_record pr) {
 
     return out;
 };
+
+int pst_journal_to_file(pst_journal * self, pst_export *pe, int * error) {
+    *error = NO_ERROR;
+
+    FILE * f_output = fopen(self->r.renaming, "w+");
+    if( !f_output ) {
+        *error = ERROR_OPEN;
+        return;
+    }
+
+    write_journal(f_output, self->r.pi);
+
+    return fclose(f_output);
+}
+
+typedef struct pst_appointment {
+    pst_record r;
+} pst_appointment;
+
+
+pst_appointment * pst_appointment_new(pst_record pr) {
+    pst_appointment * out = calloc(1, sizeof(pst_appointment));
+    out->r = pr;
+    out->r.type = PST_APPOINTMENT;
+
+    return out;
+};
+
+int pst_appointment_to_file(pst_appointment * self, pst_export *pe, int * error) {
+    *error = NO_ERROR;
+
+    FILE * f_output = fopen(self->r.renaming, "w+");
+    if( !f_output ) {
+        *error = ERROR_OPEN;
+        return;
+    }
+
+    write_appointment(f_output, self->r.pi);
+
+    return fclose(f_output);
+}
 
 int main(int argc, char* const* argv) {
     if (argc < 2) {
