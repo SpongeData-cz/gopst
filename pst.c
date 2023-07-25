@@ -242,11 +242,18 @@ typedef struct pst_record
     char * extra_mime_headers;
 } pst_record;
 
-typedef struct pst_store
-{
+typedef struct pst_store{
     pst_record r;
     /* data */
 } pst_store;
+
+pst_store * pst_store_new(pst_record pr) {
+    pst_store * out = calloc(1, sizeof(pst_store));
+    out->r = pr;
+    out->r.type = PST_STORE;
+
+    return out;
+};
 
 char * pst_store_to_string(pst_store * self, int * error) {
     *error = 0;
@@ -261,8 +268,17 @@ typedef struct pst_message {
 } pst_message;
 
 
+pst_message * pst_message_new(pst_record pr) {
+    pst_message * out = calloc(1, sizeof(pst_message));
+    out->r = pr;
+    out->r.type = PST_MESSAGE;
+
+    return out;
+};
+
 #define PST_MESSAGE_ERROR_FILE_ERROR 1
 #define PST_MESSAGE_ERROR_UNSUPPORTED_PARAM 2
+
 // returns written size?
 int pst_message_to_file(pst_message * self, pst_export *pe, int * error) {
     FILE * output = fopen(self->r.renaming, "w+");
@@ -304,6 +320,15 @@ typedef struct pst_folder {
     char * path;
 } pst_folder;
 
+pst_folder * pst_folder_new(pst_record pr) {
+    pst_folder * out = calloc(1, sizeof(pst_folder));
+    out->r = pr;
+    out->r.type = PST_FOLDER;
+
+    return out;
+};
+
+
 int pst_folder_to_file(pst_folder * self, pst_export *pe, int * error) {
     *error = NO_ERROR;
     return 0; // unimplemented no reason
@@ -314,7 +339,13 @@ typedef struct pst_journal {
     pst_record r;
 } pst_journal;
 
+pst_journal * pst_journal_new(pst_record pr) {
+    pst_journal * out = calloc(1, sizeof(pst_journal));
+    out->r = pr;
+    out->r.type = PST_JOURNAL;
 
+    return out;
+};
 
 int main(int argc, char* const* argv) {
     if (argc < 2) {
@@ -358,7 +389,6 @@ int main(int argc, char* const* argv) {
 
         lst++;
     }
-
 
     item_enumerator_destroy(ie);
 
