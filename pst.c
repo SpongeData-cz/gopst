@@ -231,6 +231,7 @@ int item_enumerator_destroy(item_enumerator * ie) {
 #define PST_FOLDER 1 << 2
 #define PST_JOURNAL 1 << 3
 #define PST_APPOINTMENT 1 << 4
+#define PST_MESSAGE_STORE 1 << 5
 
 typedef struct pst_record
 {
@@ -385,6 +386,46 @@ int pst_appointment_to_file(pst_appointment * self, pst_export *pe, int * error)
     write_appointment(f_output, self->r.pi);
 
     return fclose(f_output);
+}
+
+void pst_record_destroy(pst_record * self) {
+    free(self->r.pi);
+    free(self);
+}
+
+typedef struct pst_message_store {
+    pst_record r;
+} pst_message_store;
+
+pst_message_store * pst_message_store_new(pst_record pr) {
+    pst_appointment * out = calloc(1, sizeof(pst_message_store));
+    out->r = pr;
+    out->r.type = PST_MESSAGE_STORE;
+
+    return out;
+}
+
+int pst_message_store_to_file(pst_message_store * self, pst_export *pe, int * error) {
+    *error = NO_ERROR;
+
+    return 0;
+}
+
+pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
+    pst_record * out = NULL;
+    pst_item * item = pi;
+
+    if (item->message_store) {
+        return pst_item_message_store_new((pst_record){
+            .type=PST_MESSAGE_STORE,
+            .pi=pi,
+            .pf=pf,
+            .renaming=NULL
+        });
+    }
+    else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
+
+    }
 }
 
 int main(int argc, char* const* argv) {
