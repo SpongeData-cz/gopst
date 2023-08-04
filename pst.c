@@ -54,6 +54,7 @@ void item_enumerator_add(item_enumerator * self, pst_item* item) {
 #define ERROR_ROOT_NOT_FOUND 2
 #define ERROR_OPEN 3
 #define ERROR_INDEX_LOAD 4
+#define ERROR_UNKNOWN_RECORD 5
 
 int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr) {
     struct file_lls ff;
@@ -397,7 +398,7 @@ typedef struct pst_message_store {
     pst_record r;
 } pst_message_store;
 
-pst_message_store * pst_message_store_new(pst_record pr) {
+pst_message_store * pst_message_store_new(pst_record pr, ) {
     pst_appointment * out = calloc(1, sizeof(pst_message_store));
     out->r = pr;
     out->r.type = PST_MESSAGE_STORE;
@@ -416,7 +417,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
     pst_item * item = pi;
 
     if (item->message_store) {
-        return pst_item_message_store_new((pst_record){
+        return pst_message_store_new((pst_record){
             .type=PST_MESSAGE_STORE,
             .pi=pi,
             .pf=pf,
@@ -424,8 +425,63 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
     else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
-
+        return pst_message_new((pst_record){
+            .type=PST_MESSAGE,
+            .pi=pi,
+            .pf=pf,
+            .renaming=NULL
+        });
     }
+    else if (item->folder) {
+        return pst_folder_new((pst_record){
+            .type=PST_FOLDER,
+            .pi=pi,
+            .pf=pf,
+            .renaming=NULL
+        });
+    }
+    else if (item->journal && (item->type == PST_TYPE_JOURNAL)) {
+        return pst_journal_new((pst_record){
+            .type=PST_JOURNAL,
+            .pi=pi,
+            .pf=pf,
+            .renaming=NULL
+        });
+    }
+    else if (item->appointment && (item->type == PST_TYPE_APPOINTMENT)) {
+        return pst_appointment_new((pst_record){
+            .type=PST_APPOINTMENT,
+            .pi=pi,
+            .pf=pf,
+            .renaming=NULL
+        });
+    }
+
+    // Unknown type
+    return NULL;
+}
+
+int pst_record_to_file(pst_record * r, pst_export * e, int * error) {
+    switch(r->type) {
+        case PST_MESSAGE:
+            return pst_message_to_file((pst_message*)r, e, error);
+        break;
+        case PST_APPOINTMENT:
+            return pst_appointment_to_file((pst_appointment*)r, e, error);
+        break;
+        case PST_FOLDER:
+            return pst_folder_to_file((pst_folder*)r, e, error);
+        break;
+        case PST_JOURNAL:
+            return pst_journal_to_file((pst_journal*)r, e, error);
+        break;
+        case PST_MESSAGE_STORE:
+            return pst_message_store_to_file((pst_message*)r, e, error);
+        break;
+    }
+
+    *error = ERROR_UNKNOWN_RECORD;
+    return -1;
 }
 
 int main(int argc, char* const* argv) {
