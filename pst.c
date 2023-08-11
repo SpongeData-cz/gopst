@@ -354,7 +354,7 @@ int pst_journal_to_file(pst_journal * self, pst_export *pe, int * error) {
     FILE * f_output = fopen(self->r.renaming, "w+");
     if( !f_output ) {
         *error = ERROR_OPEN;
-        return;
+        return 0;
     }
 
     write_journal(f_output, self->r.pi);
@@ -381,7 +381,7 @@ int pst_appointment_to_file(pst_appointment * self, pst_export *pe, int * error)
     FILE * f_output = fopen(self->r.renaming, "w+");
     if( !f_output ) {
         *error = ERROR_OPEN;
-        return;
+        return 0;
     }
 
     write_appointment(f_output, self->r.pi);
@@ -390,7 +390,7 @@ int pst_appointment_to_file(pst_appointment * self, pst_export *pe, int * error)
 }
 
 void pst_record_destroy(pst_record * self) {
-    free(self->r.pi);
+    free(self->pi);
     free(self);
 }
 
@@ -398,8 +398,8 @@ typedef struct pst_message_store {
     pst_record r;
 } pst_message_store;
 
-pst_message_store * pst_message_store_new(pst_record pr, ) {
-    pst_appointment * out = calloc(1, sizeof(pst_message_store));
+pst_message_store * pst_message_store_new(pst_record pr) {
+    pst_message_store * out = calloc(1, sizeof(pst_message_store));
     out->r = pr;
     out->r.type = PST_MESSAGE_STORE;
 
@@ -417,7 +417,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
     pst_item * item = pi;
 
     if (item->message_store) {
-        return pst_message_store_new((pst_record){
+        return (pst_record*)pst_message_store_new((pst_record){
             .type=PST_MESSAGE_STORE,
             .pi=pi,
             .pf=pf,
@@ -425,7 +425,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
     else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
-        return pst_message_new((pst_record){
+        return (pst_record*)pst_message_new((pst_record){
             .type=PST_MESSAGE,
             .pi=pi,
             .pf=pf,
@@ -433,7 +433,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
     else if (item->folder) {
-        return pst_folder_new((pst_record){
+        return (pst_record*)pst_folder_new((pst_record){
             .type=PST_FOLDER,
             .pi=pi,
             .pf=pf,
@@ -441,7 +441,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
     else if (item->journal && (item->type == PST_TYPE_JOURNAL)) {
-        return pst_journal_new((pst_record){
+        return (pst_record*)pst_journal_new((pst_record){
             .type=PST_JOURNAL,
             .pi=pi,
             .pf=pf,
@@ -449,7 +449,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
     else if (item->appointment && (item->type == PST_TYPE_APPOINTMENT)) {
-        return pst_appointment_new((pst_record){
+        return (pst_record*)pst_appointment_new((pst_record){
             .type=PST_APPOINTMENT,
             .pi=pi,
             .pf=pf,
@@ -476,7 +476,7 @@ int pst_record_to_file(pst_record * r, pst_export * e, int * error) {
             return pst_journal_to_file((pst_journal*)r, e, error);
         break;
         case PST_MESSAGE_STORE:
-            return pst_message_store_to_file((pst_message*)r, e, error);
+            return pst_message_store_to_file((pst_message_store*)r, e, error);
         break;
     }
 
