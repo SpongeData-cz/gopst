@@ -354,7 +354,7 @@ int pst_journal_to_file(pst_journal * self, pst_export *pe, int * error) {
     FILE * f_output = fopen(self->r.renaming, "w+");
     if( !f_output ) {
         *error = ERROR_OPEN;
-        return;
+        return 0;
     }
 
     write_journal(f_output, self->r.pi);
