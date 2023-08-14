@@ -135,7 +135,50 @@ void      write_journal(FILE* f_output, pst_item* item);
 void      write_appointment(FILE* f_output, pst_item *item);
 char*     quote_string(char *inp);
 
-extern pst_export_conf pst_export_conf_default;
+static const pst_export_conf pst_export_conf_default;
 pst_export * pst_export_new(pst_export_conf conf);
+
+typedef struct item_enumerator {
+    pst_item ** items;
+    unsigned capacity;
+    unsigned used;
+    pst_file file;
+    char * last_error;
+    int num_error;
+} item_enumerator;
+
+typedef struct pst_record
+{
+    /* data */
+    uint8_t type;
+    pst_file * pf;
+    pst_item * pi;
+    char * renaming;
+    char * extra_mime_headers;
+} pst_record;
+
+
+#define PST_STORE 1
+#define PST_MESSAGE 1 << 1
+#define PST_FOLDER 1 << 2
+#define PST_JOURNAL 1 << 3
+#define PST_APPOINTMENT 1 << 4
+#define PST_MESSAGE_STORE 1 << 5
+
+#define PST_MESSAGE_ERROR_FILE_ERROR 1
+#define PST_MESSAGE_ERROR_UNSUPPORTED_PARAM 2
+
+#define NO_ERROR 0
+#define ERROR_NOT_UNIQUE_MSG_STORE 1
+#define ERROR_ROOT_NOT_FOUND 2
+#define ERROR_OPEN 3
+#define ERROR_INDEX_LOAD 4
+#define ERROR_UNKNOWN_RECORD 5
+
+extern pst_export * pst_export_new(pst_export_conf conf);
+item_enumerator * pst_list(const char * path);
+pst_record * pst_record_interpret(pst_item * pi, pst_file * pf);
+int pst_record_to_file(pst_record * r, pst_export * e, int * error);
+int item_enumerator_destroy(item_enumerator * ie);
 
 #endif

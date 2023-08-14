@@ -14,7 +14,7 @@
 #include "msg.h"
 #include "pst.h"
 
-extern pst_export_conf pst_export_conf_default = {
+static const pst_export_conf pst_export_conf_default = {
   .mode = MODE_NORMAL,
   .mode_MH = 0,
   .mode_EX = 0,
@@ -26,13 +26,11 @@ extern pst_export_conf pst_export_conf_default = {
   .output_type_mode = 0xff, // all
   .contact_mode_specified = 0,
   .overwrite = 0,
-  .prefer_utf8 = 0,
-  .save_rtf_body = 1,
+  .prefer_utf8 = 1,
+  .save_rtf_body = 0,
   .file_name_len = 10,
   .acceptable_extensions = NULL
 };
-
-
 
 void write_email_body(pst_export * self, FILE *f, char *body) {
     char *n = body;
@@ -941,7 +939,9 @@ void find_html_charset(pst_export * self, char *html, char *charset, size_t char
     const int  index = 1;
     const int nmatch = index+1;
     regmatch_t match[nmatch];
+
     DEBUG_ENT("find_html_charset");
+
     int rc = regexec(&(self->meta_charset_pattern), html, nmatch, match, 0);
     if (rc == 0) {
         int s = match[index].rm_so;
@@ -1405,10 +1405,12 @@ int pst_export_conf_check (pst_export_conf c) {
 
 pst_export * pst_export_new(pst_export_conf conf) {
   if (!pst_export_conf_check(conf)) {
+    printf("BROKEN CONF!\n");
     return NULL;
   }
 
   pst_export * out = calloc(1, sizeof(pst_export));
+  out->conf = conf;
 
   if (regcomp(&out->meta_charset_pattern, "<meta[^>]*content=\"[^>]*charset=([^>\";]*)[\";]", REG_ICASE | REG_EXTENDED)) {
       printf("cannot compile regex pattern to find content charset in html bodies\n");

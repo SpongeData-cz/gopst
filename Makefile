@@ -2,6 +2,9 @@
 PST_VER=libpst-0.6.76
 PST_DIR=libpst
 
+all: build
+	
+
 deps_clean:
 	rm -rf deps
 
@@ -16,5 +19,9 @@ build_pst:
 	cd deps/$(PST_DIR) && make
 
 build:
-	gcc -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pst.c pstexport.c -o test.bin
+	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pstexport.c -o pstexport.o
+	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pst.c -o pst.o
+	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o pst.o pstexport.o -lz -lpthread -shared -o libgopst.so
 
+example:
+	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread -L./ -lgopst example.c -o example.bin
