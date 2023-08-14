@@ -354,7 +354,7 @@ int pst_journal_to_file(pst_journal * self, pst_export *pe, int * error) {
     FILE * f_output = fopen(self->r.renaming, "w+");
     if( !f_output ) {
         *error = ERROR_OPEN;
-        return;
+        return 0;
     }
 
     write_journal(f_output, self->r.pi);
@@ -458,6 +458,7 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
     }
 
     // Unknown type
+    printf("UNKNOWN TYPE\n");
     return NULL;
 }
 
@@ -493,16 +494,34 @@ int main(int argc, char* const* argv) {
     item_enumerator * ie = pst_list(path);
     pst_item ** lst = ie->items;
     pst_export pe = {.conf=pst_export_conf_default, .pstfile=ie->file};
+    pst_export * ppe = pst_export_new(pst_export_conf_default);
+    ppe->pstfile = ie->file;
+
+    printf("PPEEEE %p\n", ppe);
+
+
+    int nth = 0;
 
     while(*lst) { //  pst_convert_utf8(item, &item->contact->fullname)
         //pst_convert_utf8_null(*lst, &((*lst)->contact->fullname));
         pst_item * item = *lst;
-        pst_record * pr = pst_record_interpret(item, &(ie->file));
-        int error;
+        lst++;
 
+        pst_record * pr = pst_record_interpret(item, &(ie->file));
+        if(!pr) continue;
+        printf("Known type!\n");
+
+        char * rename = calloc(128, sizeof(char));
+        snprintf(rename, 96, "output_%d.eml", nth++ );
+        pr->renaming = rename;
+
+        int error;
         uint64_t written = pst_record_to_file(pr, &pe, &error);
 
-        lst++;
+        free(rename);
+        pr->renaming = NULL;
+
+        printf("Written %lu, error: %d\n", written, error);
     }
 
     item_enumerator_destroy(ie);

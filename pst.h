@@ -136,5 +136,6 @@ void      write_appointment(FILE* f_output, pst_item *item);
 char*     quote_string(char *inp);
 
 extern pst_export_conf pst_export_conf_default;
+pst_export * pst_export_new(pst_export_conf conf);
 
 #endif
