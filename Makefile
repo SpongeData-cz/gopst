@@ -19,9 +19,9 @@ build_pst:
 	cd deps/$(PST_DIR) && make
 
 build:
-	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pstexport.c -o pstexport.o
-	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pst.c -o pst.o
+	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pstexport.c pst.c
+#	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pst.c -o pst.o
 	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o pst.o pstexport.o -lz -lpthread -shared -o libgopst.so
 
 example:
-	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread -L./ -lgopst example.c -o example.bin
+	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pstexport.o pst.o example.c -o example.bin

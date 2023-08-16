@@ -138,25 +138,25 @@ char*     quote_string(char *inp);
 static const pst_export_conf pst_export_conf_default;
 pst_export * pst_export_new(pst_export_conf conf);
 
-typedef struct item_enumerator {
-    pst_item ** items;
-    unsigned capacity;
-    unsigned used;
-    pst_file file;
-    char * last_error;
-    int num_error;
-} item_enumerator;
-
 typedef struct pst_record
 {
     /* data */
     uint8_t type;
     pst_file * pf;
     pst_item * pi;
+    char * logical_path;
     char * renaming;
     char * extra_mime_headers;
 } pst_record;
 
+typedef struct pst_record_enumerator {
+    pst_record ** items;
+    unsigned capacity;
+    unsigned used;
+    pst_file file;
+    char * last_error;
+    int num_error;
+} pst_record_enumerator;
 
 #define PST_STORE 1
 #define PST_MESSAGE 1 << 1
@@ -176,9 +176,29 @@ typedef struct pst_record
 #define ERROR_UNKNOWN_RECORD 5
 
 extern pst_export * pst_export_new(pst_export_conf conf);
-item_enumerator * pst_list(const char * path);
+pst_record_enumerator * pst_list(const char * path);
 pst_record * pst_record_interpret(pst_item * pi, pst_file * pf);
+void pst_record_destroy(pst_record * self);
 int pst_record_to_file(pst_record * r, pst_export * e, int * error);
-int item_enumerator_destroy(item_enumerator * ie);
+int item_enumerator_destroy(pst_record_enumerator * ie);
+int record_enumerator_destroy(pst_record_enumerator * ie);
+
+static const pst_export_conf pst_export_conf_default = {
+  .mode = MODE_NORMAL,
+  .mode_MH = 0,
+  .mode_EX = 0,
+  .mode_MSG = 0,
+  .mode_thunder = 0,
+  .output_mode = OUTPUT_NORMAL,
+  .contact_mode = CMODE_VCARD,
+  .deleted_mode = DMODE_EXCLUDE,
+  .output_type_mode = 0xff, // all
+  .contact_mode_specified = 0,
+  .overwrite = 0,
+  .prefer_utf8 = 1,
+  .save_rtf_body = 0,
+  .file_name_len = 10,
+  .acceptable_extensions = NULL
+};
 
 #endif

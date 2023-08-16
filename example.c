@@ -10,21 +10,19 @@ int main(int argc, char* const* argv) {
     }
 
     const char * path = argv[1];
-    item_enumerator * ie = pst_list(path);
-    pst_item ** lst = ie->items;
+    pst_record_enumerator * ie = pst_list(path);
+    pst_record ** lst = ie->items;
     pst_export * ppe = pst_export_new(pst_export_conf_default);
-    ppe->pstfile = ie->file;
+    ppe->pstfile = ie->file; // misconception
 
     int nth = 0;
 
     while(*lst) { //  pst_convert_utf8(item, &item->contact->fullname)
         //pst_convert_utf8_null(*lst, &((*lst)->contact->fullname));
-        pst_item * item = *lst;
+        pst_record * pr = *lst;
         lst++;
-
-        pst_record * pr = pst_record_interpret(item, &(ie->file));
         if(!pr) continue;
-        printf("Known type!\n");
+        printf("Known type with path %s!\n", pr->logical_path);
 
         char * rename = calloc(128, sizeof(char));
         snprintf(rename, 96, "output_%d.eml", nth++ );
@@ -39,6 +37,6 @@ int main(int argc, char* const* argv) {
         printf("Written %lu, error: %d\n", written, error);
     }
 
-    item_enumerator_destroy(ie);
+    record_enumerator_destroy(ie);
     return 0;
 }

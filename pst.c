@@ -11,18 +11,8 @@
 #include "define.h"
 #include "pst.h"
 
-struct file_lls {
-    char *dname;
-    int32_t stored_count;
-    int32_t item_count;
-    int32_t skip_count;
-    int32_t type;
-};
-
-
-
-item_enumerator * item_enumerator_new(unsigned capacity) {
-    item_enumerator * ret = calloc(1, sizeof(item_enumerator));
+pst_record_enumerator * item_enumerator_new(unsigned capacity) {
+    pst_record_enumerator * ret = calloc(1, sizeof(pst_record_enumerator));
     ret->capacity = (capacity > 1 ? 1024 : 1);
 
     ret->items = calloc(capacity, sizeof(pst_item*));
@@ -31,7 +21,7 @@ item_enumerator * item_enumerator_new(unsigned capacity) {
     return ret;
 }
 
-void item_enumerator_add(item_enumerator * self, pst_item* item) {
+void record_enumerator_add(pst_record_enumerator * self, pst_record* record) {
     unsigned ni = self->used;
     if (ni >= self->capacity) {
         // double capacity
@@ -39,10 +29,10 @@ void item_enumerator_add(item_enumerator * self, pst_item* item) {
         self->items = realloc(self->items, (self->capacity+1) * sizeof(pst_item*));
         memset(self->items + self->used, 0, sizeof(pst_item*) * (self->capacity+1-self->used)); // zero the rest
     }
-    self->items[self->used++] = item;
+    self->items[self->used++] = record;
 }
 
-int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr) {
+int pst_list_impl(pst_record_enumerator *ie, char * path, pst_desc_tree *d_ptr) {
     pst_item *item = NULL;
     DEBUG_ENT("pst_list_impl");
 
@@ -64,7 +54,12 @@ int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr
                 if (item->folder && d_ptr->child) {
                     // FOLDER
                     pst_convert_utf8(item, &item->file_as);
-                    pst_list_impl(ie, item, d_ptr->child);
+                    unsigned pathlen = strlen(path);
+                    pathlen += strlen(item->file_as.str) +2;
+                    char * cpath = malloc(pathlen * sizeof(char));
+                    sprintf(cpath, "%s/%s", path, item->file_as.str);
+                    pst_list_impl(ie, cpath, d_ptr->child);
+                    free(cpath);
                 } else if (item->contact && (item->type == PST_TYPE_CONTACT)) {
                     // CONTACT VCF like
                 } else if (item->email && ((item->type == PST_TYPE_NOTE) || (item->type == PST_TYPE_SCHEDULE) || (item->type == PST_TYPE_REPORT))) {
@@ -79,7 +74,12 @@ int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr
                 }
 
                 if(validP) {
-                    item_enumerator_add(ie, item);
+                    // make record
+                    pst_record * nr = pst_record_interpret(item, &(ie->file));
+                    if (nr) {
+                        nr->logical_path = strdup(path);
+                        record_enumerator_add(ie, nr);
+                    }
                 }
             } else {
                 DEBUG_INFO(("A NULL item was seen\n"));
@@ -92,8 +92,8 @@ int pst_list_impl(item_enumerator *ie, pst_item *outeritem, pst_desc_tree *d_ptr
     return NO_ERROR;
 }
 
-item_enumerator * pst_list(const char * path) {
-    item_enumerator * out = item_enumerator_new(1); // TODO: change the default pool size?
+pst_record_enumerator * pst_list(const char * path) {
+    pst_record_enumerator * out = item_enumerator_new(1); // TODO: change the default pool size?
 
     if (pst_open(&(out->file), path, NULL)) {
         out->last_error = "Cannot open file.";
@@ -139,7 +139,7 @@ item_enumerator * pst_list(const char * path) {
     }
 
     // traverse
-    out->num_error = pst_list_impl(out, item, d_ptr->child);
+    out->num_error = pst_list_impl(out, "", d_ptr->child);
     if (out->num_error) {
         out->last_error = "Traversing error.";
     }
@@ -149,11 +149,11 @@ defer:
 }
 
 
-int item_enumerator_destroy(item_enumerator * ie) {
-    pst_item ** lst = ie->items;
+int record_enumerator_destroy(pst_record_enumerator * ie) {
+    pst_record ** lst = ie->items;
 
     while(*lst) {
-        pst_freeItem(*(lst++));
+        pst_record_destroy(*(lst++));
     }
 
     pst_close(&ie->file);
@@ -306,7 +306,9 @@ int pst_appointment_to_file(pst_appointment * self, pst_export *pe, int * error)
 }
 
 void pst_record_destroy(pst_record * self) {
-    free(self->pi);
+    pst_freeItem(self->pi);
+    self->pi = NULL;
+    //free(self->pi);
     free(self);
 }
 
