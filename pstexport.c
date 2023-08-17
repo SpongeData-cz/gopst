@@ -1403,3 +1403,8 @@ pst_export * pst_export_new(pst_export_conf conf) {
 
   return out;
 }
+
+void pst_export_destroy(pst_export * self) {
+    regfree(&(self->meta_charset_pattern));
+    free(self);
+}

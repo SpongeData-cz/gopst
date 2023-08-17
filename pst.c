@@ -158,6 +158,7 @@ int record_enumerator_destroy(pst_record_enumerator * ie) {
 
     pst_close(&ie->file);
     free(ie->items);
+    ie->items = NULL;
     free(ie);
 
     return 0;
@@ -193,6 +194,7 @@ pst_message * pst_message_new(pst_record pr) {
     pst_message * out = calloc(1, sizeof(pst_message));
     out->r = pr;
     out->r.type = PST_MESSAGE;
+    out->r.name = strdup(pr.pi->file_as.str ? pr.pi->file_as.str : "unnamed_message");
 
     return out;
 };
@@ -242,6 +244,7 @@ pst_folder * pst_folder_new(pst_record pr) {
     pst_folder * out = calloc(1, sizeof(pst_folder));
     out->r = pr;
     out->r.type = PST_FOLDER;
+    out->r.name = strdup(pr.pi->file_as.str ? pr.pi->file_as.str : "unnamed_folder");
 
     return out;
 };
@@ -260,6 +263,7 @@ pst_journal * pst_journal_new(pst_record pr) {
     pst_journal * out = calloc(1, sizeof(pst_journal));
     out->r = pr;
     out->r.type = PST_JOURNAL;
+    out->r.name = strdup(pr.pi->file_as.str ? pr.pi->file_as.str : "unnamed_journal");
 
     return out;
 };
@@ -288,6 +292,8 @@ pst_appointment * pst_appointment_new(pst_record pr) {
     out->r = pr;
     out->r.type = PST_APPOINTMENT;
 
+    out->r.name = strdup(pr.pi->file_as.str ? pr.pi->file_as.str : "unnamed_appointment");
+
     return out;
 };
 
@@ -309,6 +315,8 @@ void pst_record_destroy(pst_record * self) {
     pst_freeItem(self->pi);
     self->pi = NULL;
     //free(self->pi);
+    free(self->logical_path);
+    free(self->name);
     free(self);
 }
 
@@ -320,6 +328,7 @@ pst_message_store * pst_message_store_new(pst_record pr) {
     pst_message_store * out = calloc(1, sizeof(pst_message_store));
     out->r = pr;
     out->r.type = PST_MESSAGE_STORE;
+    out->r.name = strdup(pr.pi->file_as.str ? pr.pi->file_as.str : "unnamed_message_store");
 
     return out;
 }

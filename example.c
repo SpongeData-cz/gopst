@@ -22,7 +22,7 @@ int main(int argc, char* const* argv) {
         pst_record * pr = *lst;
         lst++;
         if(!pr) continue;
-        printf("Known type with path %s!\n", pr->logical_path);
+        printf("Known type with path %s / %s\n", pr->logical_path, pr->name);
 
         char * rename = calloc(128, sizeof(char));
         snprintf(rename, 96, "output_%d.eml", nth++ );
@@ -37,6 +37,9 @@ int main(int argc, char* const* argv) {
         printf("Written %lu, error: %d\n", written, error);
     }
 
+
     record_enumerator_destroy(ie);
+    pst_export_destroy(ppe);
+
     return 0;
 }
