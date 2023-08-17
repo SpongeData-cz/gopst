@@ -1,4 +1,4 @@
-module github.com/SpongeData-cz/gopst
+module gopst
 
 go 1.18
 
