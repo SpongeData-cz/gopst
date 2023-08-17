@@ -1,7 +1,9 @@
 /***
- * readpst.c
- * Part of the LibPST project
- * Written by David Smith
+ * pstexport.c
+ * uses libpst
+ * Written by Pavel Prochazka
+ *            pavel.prochazka@spongedata.cz
+ * Refactored the original David Smith (original part of libpst)
  *            dave.s@earthcorp.com
  */
 
@@ -13,8 +15,6 @@
 #include "lzfu.h"
 #include "msg.h"
 #include "pst.h"
-
-
 
 void write_email_body(pst_export * self, FILE *f, char *body) {
     char *n = body;

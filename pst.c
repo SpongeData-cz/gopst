@@ -53,7 +53,7 @@ int pst_list_impl(pst_record_enumerator *ie, char * path, pst_desc_tree *d_ptr) 
 
                 if (item->folder && d_ptr->child) {
                     // FOLDER
-                    pst_convert_utf8(item, &item->file_as);
+                    pst_convert_utf8(item, &item->file_as); // TODO: detect charset via libuchardet!
                     unsigned pathlen = strlen(path);
                     pathlen += strlen(item->file_as.str) +2;
                     char * cpath = malloc(pathlen * sizeof(char));
@@ -160,7 +160,6 @@ int record_enumerator_destroy(pst_record_enumerator * ie) {
     free(ie->items);
     ie->items = NULL;
     free(ie);
-
     return 0;
 }
 
@@ -335,7 +334,6 @@ pst_message_store * pst_message_store_new(pst_record pr) {
 
 int pst_message_store_to_file(pst_message_store * self, pst_export *pe, int * error) {
     *error = NO_ERROR;
-
     return 0;
 }
 
@@ -383,8 +381,31 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
 
+    /* TODO: Handle:
+        case PST_TYPE_STICKYNOTE:
+        case PST_TYPE_TASK:
+        case PST_TYPE_OTHER:
+
+    */
+
+   switch (item->type)
+   {
+    case PST_TYPE_STICKYNOTE:
+        printf("STICKYNOTE\n");
+    break;
+    case PST_TYPE_TASK:
+        printf("TYPE_TASK\n");
+    break;
+    case PST_TYPE_OTHER:
+        printf("OTHER\n");
+    break;
+
+    default:
+        printf("UNKNOWN TYPE\n");
+    break;
+   }
+
     // Unknown type
-    printf("UNKNOWN TYPE\n");
     return NULL;
 }
 
@@ -410,4 +431,3 @@ int pst_record_to_file(pst_record * r, pst_export * e, int * error) {
     *error = ERROR_UNKNOWN_RECORD;
     return -1;
 }
-

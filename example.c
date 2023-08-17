@@ -1,4 +1,3 @@
-
 #include <regex.h>
 #include <string.h>
 #include "define.h"
@@ -17,8 +16,7 @@ int main(int argc, char* const* argv) {
 
     int nth = 0;
 
-    while(*lst) { //  pst_convert_utf8(item, &item->contact->fullname)
-        //pst_convert_utf8_null(*lst, &((*lst)->contact->fullname));
+    while(*lst) {
         pst_record * pr = *lst;
         lst++;
         if(!pr) continue;
@@ -36,7 +34,6 @@ int main(int argc, char* const* argv) {
 
         printf("Written %lu, error: %d\n", written, error);
     }
-
 
     record_enumerator_destroy(ie);
     pst_export_destroy(ppe);
