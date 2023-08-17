@@ -1,8 +1,8 @@
 package gopst
 
 /*
-#cgo LDFLAGS: libgopst.a
-#cgo CFLAGS: -I./deps/libpst/ -I./deps/libpst/src/
+#cgo LDFLAGS: ./src/libgopst.a
+#cgo CFLAGS: -I./src/ -I./src/deps/libpst/ -I./src/deps/libpst/src/
 
 #include "define.h"
 
