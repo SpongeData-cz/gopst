@@ -34,5 +34,8 @@ build:
 libgopst.a: pst.o pstexport.o
 	ar rcs $@ $^
 
+libpst.a: deps
+	ar rcs $@ ./deps/libpst/src/.libs/*.o
+
 example: build
 	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pstexport.o pst.o example.c -o example.bin
