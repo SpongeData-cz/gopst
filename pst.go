@@ -11,24 +11,28 @@ package gopst
 */
 import "C"
 import (
+	"fmt"
 	"math/bits"
+	"strings"
 	"unsafe"
 )
 
 const POINTER_SIZE = bits.UintSize / 8
 
 type PstRecord struct {
-	TypeOfRecord     uint8
-	PFile            *C.struct_pst_file
-	PItem            *C.struct_pst_item
+	TypeOfRecord uint8
+	// Dont needed?
+	// PFile            *C.struct_pst_file
+	// PItem            *C.struct_pst_item
 	LogicalPath      string
 	Name             string
 	Renaming         string
 	ExtraMimeHeaders string
+	Record           *C.struct_pst_record
 }
 
 type PstExport struct {
-	pstExport *C.struct_pst_export
+	PstExportC *C.struct_pst_export
 }
 
 const (
@@ -120,12 +124,18 @@ type pstExportConf struct {
 }
 
 type PstRecordEnumerator struct {
-	Items     []PstRecord
-	Capacity  uint
-	Used      uint
-	File      *C.struct_pst_file
-	LastError string
-	NumError  int
+	Items            []*PstRecord
+	Capacity         uint
+	Used             uint
+	File             *C.struct_pst_file
+	LastError        string
+	NumError         int
+	recordEnumerator *C.struct_pst_record_enumerator
+}
+
+func (ego *PstRecord) SetRecordRenaming(renaming string) {
+	ego.Record.renaming = C.CString(renaming)
+	ego.Renaming = strings.Clone(renaming)
 }
 
 func PstList(path string) PstRecordEnumerator {
@@ -140,17 +150,20 @@ func PstList(path string) PstRecordEnumerator {
 		return out
 	}
 
-	out.Items = make([]PstRecord, 0)
+	out.recordEnumerator = enum
+
+	out.Items = make([]*PstRecord, 0)
 
 	for elem := (*enum).items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
-		out.Items = append(out.Items, PstRecord{
-			TypeOfRecord:     uint8((*elem)._type),
-			PFile:            (*elem).pf,
-			PItem:            (*elem).pi,
+		out.Items = append(out.Items, &PstRecord{
+			TypeOfRecord: uint8((*elem)._type),
+			// PFile:            (*elem).pf,
+			// PItem:            (*elem).pi,
 			LogicalPath:      C.GoString((*elem).logical_path),
 			Name:             C.GoString((*elem).name),
 			Renaming:         C.GoString((*elem).renaming),
 			ExtraMimeHeaders: C.GoString((*elem).extra_mime_headers),
+			Record:           (*elem),
 		})
 	}
 
@@ -161,10 +174,18 @@ func PstList(path string) PstRecordEnumerator {
 	return out
 }
 
-func NewPstExport(conf pstExportConf) PstExport {
-	return PstExport{
-		pstExport: C.pst_export_new(goExportConfToC(conf)),
+func NewPstExport(conf pstExportConf) *PstExport {
+	ego := new(PstExport)
+
+	exportC := C.pst_export_new(goExportConfToC(conf))
+
+	if exportC == nil {
+		return ego
 	}
+
+	ego.PstExportC = exportC
+
+	return ego
 }
 
 func PstExporConfDefault() pstExportConf {
@@ -205,4 +226,45 @@ func goExportConfToC(goExportConf pstExportConf) C.struct_pst_export_conf {
 		acceptable_extensions:  C.CString(goExportConf.acceptableExtensions),
 	}
 
+}
+
+func PstRecordToFile(record *PstRecord, export *PstExport, err int) (int, int) {
+	errC := C.int(0)
+	written := C.pst_record_to_file(record.Record, export.PstExportC, &errC)
+	return int(written), int(errC)
+}
+
+func DestroyPstRecord(record *PstRecord) error {
+	if record == nil || record.Record == nil {
+		return fmt.Errorf("Record has been already destroyed.")
+	}
+	record.Record = nil
+	return nil
+}
+
+func DestroyRecordEnumerator(rcrdEnumerator *PstRecordEnumerator) error {
+
+	if rcrdEnumerator == nil || rcrdEnumerator.recordEnumerator == nil {
+		return fmt.Errorf("RecordEnumerator has been already destroyed.")
+	}
+
+	C.record_enumerator_destroy(rcrdEnumerator.recordEnumerator)
+
+	for i, r := range rcrdEnumerator.Items {
+		if err := DestroyPstRecord(r); err != nil {
+			return err
+		}
+		rcrdEnumerator.Items[i] = nil
+	}
+	rcrdEnumerator.File = nil
+
+	return nil
+}
+
+func DestroyPstExport(export *PstExport) error {
+	if export == nil || export.PstExportC == nil {
+		return fmt.Errorf("PstExport has been already destroyed.")
+	}
+	C.pst_export_destroy(export.PstExportC)
+	return nil
 }
