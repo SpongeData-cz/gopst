@@ -163,24 +163,6 @@ int record_enumerator_destroy(pst_record_enumerator * ie) {
     return 0;
 }
 
-typedef struct pst_store{
-    pst_record r;
-    /* data */
-} pst_store;
-
-pst_store * pst_store_new(pst_record pr) {
-    pst_store * out = calloc(1, sizeof(pst_store));
-    out->r = pr;
-    out->r.type = PST_STORE;
-
-    return out;
-};
-
-char * pst_store_to_string(pst_store * self, int * error) {
-    *error = 0;
-    return NULL; // doing nothing
-}
-
 /** .eml - convertible message (email, schedule, note, report) */
 typedef struct pst_message {
     pst_record r;
@@ -256,7 +238,6 @@ int pst_folder_to_file(pst_folder * self, pst_export *pe, int * error) {
 typedef struct pst_journal {
     pst_record r;
 } pst_journal;
-
 
 pst_journal * pst_journal_new(pst_record pr) {
     pst_journal * out = calloc(1, sizeof(pst_journal));
@@ -381,7 +362,8 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
         });
     }
 
-    /* TODO: Handle:
+    /* TODO: !!!
+    Handle:
         case PST_TYPE_STICKYNOTE:
         case PST_TYPE_TASK:
         case PST_TYPE_OTHER:
