@@ -19,22 +19,6 @@ import (
 
 const POINTER_SIZE = bits.UintSize / 8
 
-type PstRecord struct {
-	TypeOfRecord uint8
-	// Dont needed?
-	// PFile            *C.struct_pst_file
-	// PItem            *C.struct_pst_item
-	LogicalPath      string
-	Name             string
-	Renaming         string
-	ExtraMimeHeaders string
-	Record           *C.struct_pst_record
-}
-
-type PstExport struct {
-	PstExportC *C.struct_pst_export
-}
-
 const (
 	/*
 		Normal mode just creates mbox format files in the current directory. Each file is named
@@ -105,26 +89,97 @@ const (
 	ERROR_UNKNOWN_RECORD
 )
 
-type pstExportConf struct {
-	mode                 int
-	modeMH               int // a submode of MODE_SEPARATE
-	modeEX               int // a submode of MODE_SEPARATE
-	modeMSG              int // a submode of MODE_SEPARATE
-	modeThunder          int // a submode of MODE_RECURSE
-	outputMode           int
-	contactMode          int // not used within the code
-	deletedMode          int // not used within the code
-	outputTypeMode       int // Default to all. not used within the code
-	contactModeSpecified int // not used within the code
-	overwrite            int
-	preferUtf8           int
-	saveRtfBody          int    // unused
-	fileNameLen          int    // enough room for MODE_SPEARATE file name
-	acceptableExtensions string //TODO: Need to pass NULL to C functions.
+type Export struct {
+	ExportC *C.struct_pst_export
+}
+type ExportConf struct {
+	Mode                 int
+	ModeMH               int // a submode of MODE_SEPARATE
+	ModeEX               int // a submode of MODE_SEPARATE
+	ModeMSG              int // a submode of MODE_SEPARATE
+	ModeThunder          int // a submode of MODE_RECURSE
+	OutputMode           int
+	ContactMode          int // not used within the code
+	DeletedMode          int // not used within the code
+	OutputTypeMode       int // Default to all. not used within the code
+	ContactModeSpecified int // not used within the code
+	Overwrite            int
+	PreferUtf8           int
+	SaveRtfBody          int // unused
+	FileNameLen          int // enough room for MODE_SPEARATE file name
+	AcceptableExtensions string
 }
 
-type PstRecordEnumerator struct {
-	Items            []*PstRecord
+func NewExport(conf ExportConf) *Export {
+
+	exportC := C.pst_export_new(goExportConfToC(conf))
+	if exportC == nil {
+		return nil
+	}
+
+	return &Export{ExportC: exportC}
+}
+
+func goExportConfToC(goExportConf ExportConf) C.struct_pst_export_conf {
+	cExport := C.struct_pst_export_conf{
+		mode:                   C.int(goExportConf.Mode),
+		mode_MH:                C.int(goExportConf.ModeMH),
+		mode_EX:                C.int(goExportConf.ModeMH),
+		mode_MSG:               C.int(goExportConf.ModeMSG),
+		mode_thunder:           C.int(goExportConf.ModeThunder),
+		output_mode:            C.int(goExportConf.OutputMode),
+		contact_mode:           C.int(goExportConf.ContactMode),
+		deleted_mode:           C.int(goExportConf.DeletedMode),
+		output_type_mode:       C.int(goExportConf.OutputTypeMode),
+		contact_mode_specified: C.int(goExportConf.ContactModeSpecified),
+		overwrite:              C.int(goExportConf.Overwrite),
+		prefer_utf8:            C.int(goExportConf.PreferUtf8),
+		save_rtf_body:          C.int(goExportConf.SaveRtfBody),
+		file_name_len:          C.int(goExportConf.FileNameLen),
+	}
+
+	if goExportConf.AcceptableExtensions == "" {
+		cExport.acceptable_extensions = nil
+	} else {
+		cExport.acceptable_extensions = C.CString(goExportConf.AcceptableExtensions)
+	}
+
+	return cExport
+}
+
+func ExportConfDefault() ExportConf {
+	return ExportConf{
+		Mode:                 MODE_NORMAL,
+		ModeMH:               0,
+		ModeEX:               0,
+		ModeMSG:              0,
+		ModeThunder:          0,
+		OutputMode:           OUTPUT_NORMAL,
+		ContactMode:          CMODE_VCARD,
+		DeletedMode:          DMODE_EXCLUDE,
+		OutputTypeMode:       0xff,
+		ContactModeSpecified: 0,
+		Overwrite:            0,
+		PreferUtf8:           1,
+		SaveRtfBody:          0,
+		FileNameLen:          10,
+		AcceptableExtensions: "",
+	}
+}
+
+type Record struct {
+	TypeOfRecord uint8
+	// Dont needed?
+	// PFile            *C.struct_pst_file
+	// PItem            *C.struct_pst_item
+	LogicalPath      string
+	Name             string
+	Renaming         string
+	ExtraMimeHeaders string
+	Record           *C.struct_pst_record
+}
+type RecordEnumerator struct {
+	Items            []*Record
 	Capacity         uint
 	Used             uint
 	File             *C.struct_pst_file
@@ -133,29 +188,24 @@ type PstRecordEnumerator struct {
 	recordEnumerator *C.struct_pst_record_enumerator
 }
 
-func (ego *PstRecord) SetRecordRenaming(renaming string) {
-	ego.Record.renaming = C.CString(renaming)
-	ego.Renaming = strings.Clone(renaming)
-}
+func List(path string) *RecordEnumerator {
 
-func PstList(path string) PstRecordEnumerator {
-
-	out := PstRecordEnumerator{}
+	ego := new(RecordEnumerator)
 
 	enum := C.pst_list(C.CString(path))
 
-	out.LastError = C.GoString((*enum).last_error)
-	out.NumError = int((*enum).num_error)
-	if out.NumError != C.NO_ERROR {
-		return out
+	ego.LastError = C.GoString((*enum).last_error)
+	ego.NumError = int((*enum).num_error)
+	if ego.NumError != C.NO_ERROR {
+		return ego
 	}
 
-	out.recordEnumerator = enum
+	ego.recordEnumerator = enum
 
-	out.Items = make([]*PstRecord, 0)
+	ego.Items = make([]*Record, 0)
 
 	for elem := (*enum).items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
-		out.Items = append(out.Items, &PstRecord{
+		ego.Items = append(ego.Items, &Record{
 			TypeOfRecord: uint8((*elem)._type),
 			// PFile:            (*elem).pf,
 			// PItem:            (*elem).pi,
@@ -167,104 +217,58 @@ func PstList(path string) PstRecordEnumerator {
 		})
 	}
 
-	out.Capacity = uint((*enum).capacity)
-	out.Used = uint((*enum).used)
-	out.File = &(*enum).file
-
-	return out
-}
-
-func NewPstExport(conf pstExportConf) *PstExport {
-	ego := new(PstExport)
-
-	exportC := C.pst_export_new(goExportConfToC(conf))
-
-	if exportC == nil {
-		return ego
-	}
-
-	ego.PstExportC = exportC
+	ego.Capacity = uint((*enum).capacity)
+	ego.Used = uint((*enum).used)
+	ego.File = &(*enum).file
 
 	return ego
 }
 
-func PstExporConfDefault() pstExportConf {
-	return pstExportConf{
-		mode:                 MODE_NORMAL,
-		modeMH:               0,
-		modeEX:               0,
-		modeMSG:              0,
-		modeThunder:          0,
-		outputMode:           OUTPUT_NORMAL,
-		contactMode:          CMODE_VCARD,
-		deletedMode:          DMODE_EXCLUDE,
-		outputTypeMode:       0xff,
-		contactModeSpecified: 0,
-		overwrite:            0,
-		preferUtf8:           1,
-		saveRtfBody:          0,
-		fileNameLen:          10,
-		acceptableExtensions: ""}
+func (ego *Record) SetRecordRenaming(renaming string) {
+	ego.Record.renaming = C.CString(renaming)
+	ego.Renaming = strings.Clone(renaming)
 }
 
-func goExportConfToC(goExportConf pstExportConf) C.struct_pst_export_conf {
-	return C.struct_pst_export_conf{
-		mode:                   C.int(goExportConf.mode),
-		mode_MH:                C.int(goExportConf.modeMH),
-		mode_EX:                C.int(goExportConf.modeMH),
-		mode_MSG:               C.int(goExportConf.modeMSG),
-		mode_thunder:           C.int(goExportConf.modeThunder),
-		output_mode:            C.int(goExportConf.outputMode),
-		contact_mode:           C.int(goExportConf.contactMode),
-		deleted_mode:           C.int(goExportConf.deletedMode),
-		output_type_mode:       C.int(goExportConf.outputTypeMode),
-		contact_mode_specified: C.int(goExportConf.contactModeSpecified),
-		overwrite:              C.int(goExportConf.overwrite),
-		prefer_utf8:            C.int(goExportConf.preferUtf8),
-		save_rtf_body:          C.int(goExportConf.saveRtfBody),
-		file_name_len:          C.int(goExportConf.fileNameLen),
-		acceptable_extensions:  C.CString(goExportConf.acceptableExtensions),
-	}
-
-}
-
-func PstRecordToFile(record *PstRecord, export *PstExport, err int) (int, int) {
+func (ego *Record) RecordToFile(export *Export, err int) (int, int) {
 	errC := C.int(0)
-	written := C.pst_record_to_file(record.Record, export.PstExportC, &errC)
+	written := C.pst_record_to_file(ego.Record, export.ExportC, &errC)
 	return int(written), int(errC)
 }
 
-func DestroyPstRecord(record *PstRecord) error {
-	if record == nil || record.Record == nil {
+func (ego *Record) DestroyRecord() error {
+	if ego == nil || ego.Record == nil {
 		return fmt.Errorf("Record has been already destroyed.")
 	}
-	record.Record = nil
+	ego.Record = nil
 	return nil
 }
 
-func DestroyRecordEnumerator(rcrdEnumerator *PstRecordEnumerator) error {
+func (ego *RecordEnumerator) DestroyRecordEnumerator() error {
 
-	if rcrdEnumerator == nil || rcrdEnumerator.recordEnumerator == nil {
+	if ego == nil || ego.recordEnumerator == nil {
 		return fmt.Errorf("RecordEnumerator has been already destroyed.")
 	}
 
-	C.record_enumerator_destroy(rcrdEnumerator.recordEnumerator)
+	C.record_enumerator_destroy(ego.recordEnumerator)
 
-	for i, r := range rcrdEnumerator.Items {
-		if err := DestroyPstRecord(r); err != nil {
+	for i, r := range ego.Items {
+		if err := r.DestroyRecord(); err != nil {
 			return err
 		}
-		rcrdEnumerator.Items[i] = nil
+		ego.Items[i] = nil
 	}
-	rcrdEnumerator.File = nil
+	ego.Items = nil
+	ego.File = nil
+	ego.recordEnumerator = nil
 
 	return nil
 }
 
-func DestroyPstExport(export *PstExport) error {
-	if export == nil || export.PstExportC == nil {
-		return fmt.Errorf("PstExport has been already destroyed.")
+func (ego *Export) DestroyExport() error {
+	if ego == nil || ego.ExportC == nil {
+		return fmt.Errorf("Export has been already destroyed.")
 	}
-	C.pst_export_destroy(export.PstExportC)
+	C.pst_export_destroy(ego.ExportC)
+	ego.ExportC = nil
 	return nil
 }
