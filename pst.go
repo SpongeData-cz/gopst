@@ -17,8 +17,24 @@ import (
 	"unsafe"
 )
 
+/*
+Size of pointer in bytes.
+*/
 const POINTER_SIZE = bits.UintSize / 8
 
+/*
+Errors.
+*/
+const (
+	NO_ERROR = iota
+	ERROR_NOT_UNIQUE_MSG_STORE
+	ERROR_ROOT_NOT_FOUND
+	ERROR_OPEN
+	ERROR_INDEX_LOAD
+	ERROR_UNKNOWN_RECORD
+)
+
+// EXPORT
 const (
 	/*
 		Normal mode just creates mbox format files in the current directory. Each file is named
@@ -80,36 +96,36 @@ const (
 	OTMODE_CONTACT
 )
 
-const (
-	NO_ERROR = iota
-	ERROR_NOT_UNIQUE_MSG_STORE
-	ERROR_ROOT_NOT_FOUND
-	ERROR_OPEN
-	ERROR_INDEX_LOAD
-	ERROR_UNKNOWN_RECORD
-)
-
 type Export struct {
-	ExportC *C.struct_pst_export
+	pstExport *C.struct_pst_export
 }
 type ExportConf struct {
 	Mode                 int
-	ModeMH               int // a submode of MODE_SEPARATE
-	ModeEX               int // a submode of MODE_SEPARATE
-	ModeMSG              int // a submode of MODE_SEPARATE
-	ModeThunder          int // a submode of MODE_RECURSE
+	ModeMH               int // A submode of MODE_SEPARATE
+	ModeEX               int // A submode of MODE_SEPARATE
+	ModeMSG              int // A submode of MODE_SEPARATE
+	ModeThunder          int // A submode of MODE_RECURSE
 	OutputMode           int
-	ContactMode          int // not used within the code
-	DeletedMode          int // not used within the code
-	OutputTypeMode       int // Default to all. not used within the code
-	ContactModeSpecified int // not used within the code
+	ContactMode          int // Not used within the code
+	DeletedMode          int // Not used within the code
+	OutputTypeMode       int // Default to all. Not used within the code
+	ContactModeSpecified int // Not used within the code
 	Overwrite            int
 	PreferUtf8           int
-	SaveRtfBody          int // unused
-	FileNameLen          int // enough room for MODE_SPEARATE file name
+	SaveRtfBody          int // Unused
+	FileNameLen          int // Enough room for MODE_SPEARATE file name
 	AcceptableExtensions string
 }
 
+/*
+Creates a new instance of the Export structure.
+
+Parameters:
+  - conf - Export Configuration.
+
+Returns:
+  - Newly created Export structure.
+*/
 func NewExport(conf ExportConf) *Export {
 
 	exportC := C.pst_export_new(goExportConfToC(conf))
@@ -117,9 +133,18 @@ func NewExport(conf ExportConf) *Export {
 		return nil
 	}
 
-	return &Export{ExportC: exportC}
+	return &Export{pstExport: exportC}
 }
 
+/*
+Creates an equivalent C exportConf structure to the <goExportConf> parameter.
+
+Parameters:
+  - goExportConf - Go version of Export configuration.
+
+Returns:
+  - Created C exportConf structure.
+*/
 func goExportConfToC(goExportConf ExportConf) C.struct_pst_export_conf {
 	cExport := C.struct_pst_export_conf{
 		mode:                   C.int(goExportConf.Mode),
@@ -147,6 +172,12 @@ func goExportConfToC(goExportConf ExportConf) C.struct_pst_export_conf {
 	return cExport
 }
 
+/*
+Default parameters of ExportConf.
+
+Returns:
+  - Newly created ExportConf structure with default parameters.
+*/
 func ExportConfDefault() ExportConf {
 	return ExportConf{
 		Mode:                 MODE_NORMAL,
@@ -157,7 +188,7 @@ func ExportConfDefault() ExportConf {
 		OutputMode:           OUTPUT_NORMAL,
 		ContactMode:          CMODE_VCARD,
 		DeletedMode:          DMODE_EXCLUDE,
-		OutputTypeMode:       0xff,
+		OutputTypeMode:       0xff, // all
 		ContactModeSpecified: 0,
 		Overwrite:            0,
 		PreferUtf8:           1,
@@ -167,27 +198,100 @@ func ExportConfDefault() ExportConf {
 	}
 }
 
+/*
+Destroys Export.
+
+Returns:
+  - Error, if Export has been already destroyed.
+*/
+func (ego *Export) DestroyExport() error {
+	if ego == nil || ego.pstExport == nil {
+		return fmt.Errorf("Export has been already destroyed.")
+	}
+	C.pst_export_destroy(ego.pstExport)
+	ego.pstExport = nil
+	return nil
+}
+
+// RECORD
 type Record struct {
-	TypeOfRecord uint8
-	// Dont needed?
-	// PFile            *C.struct_pst_file
-	// PItem            *C.struct_pst_item
+	TypeOfRecord     uint8
 	LogicalPath      string
 	Name             string
 	Renaming         string
 	ExtraMimeHeaders string
-	Record           *C.struct_pst_record
+	record           *C.struct_pst_record
 }
+
+/*
+Sets renaming for the Record.
+
+Parameters:
+  - renaming - Path with a new name.
+*/
+func (ego *Record) SetRecordRenaming(renaming string) {
+	ego.record.renaming = C.CString(renaming)
+	ego.Renaming = strings.Clone(renaming)
+}
+
+/*
+Writes individual records to a file.
+
+Parameters:
+  - export - Pst export.
+
+Return:
+  - 1, if successfully written, otherwise 0,
+  - numerical representation of error.
+*/
+func (ego *Record) RecordToFile(export *Export) (int, int) {
+	errC := C.int(0)
+	written := C.pst_record_to_file(ego.record, export.pstExport, &errC)
+	return int(written), int(errC)
+}
+
+/*
+Destroys individual Record.
+
+Returns:
+  - Error, if Record has been already destroyed.
+*/
+func (ego *Record) DestroyRecord() error {
+	if ego == nil || ego.record == nil {
+		return fmt.Errorf("Record has been already destroyed.")
+	}
+	ego.record = nil
+	return nil
+}
+
+// RECORD ENUMERATOR
 type RecordEnumerator struct {
 	Items            []*Record
 	Capacity         uint
 	Used             uint
-	File             *C.struct_pst_file
+	file             *C.struct_pst_file
 	LastError        string
 	NumError         int
 	recordEnumerator *C.struct_pst_record_enumerator
 }
 
+/*
+Lists the contents of the Pst into a RecordEnumerator structure.
+
+The individual items of pst are listed in an array type field "Items".
+
+The RecordEnumerator structure must be destroyed
+by DestroyRecordEnumerator() call explicitly.
+
+Alternatively, it is possible to destroy individual Items of the RecordEnumerator
+structure by calling the DestroyRecord() function.
+
+Parameters:
+  - path - Path to the pst.
+
+Returns:
+  - RecordEnumerator structure.
+*/
 func List(path string) *RecordEnumerator {
 
 	ego := new(RecordEnumerator)
@@ -206,43 +310,28 @@ func List(path string) *RecordEnumerator {
 
 	for elem := (*enum).items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
 		ego.Items = append(ego.Items, &Record{
-			TypeOfRecord: uint8((*elem)._type),
-			// PFile:            (*elem).pf,
-			// PItem:            (*elem).pi,
+			TypeOfRecord:     uint8((*elem)._type),
 			LogicalPath:      C.GoString((*elem).logical_path),
 			Name:             C.GoString((*elem).name),
 			Renaming:         C.GoString((*elem).renaming),
 			ExtraMimeHeaders: C.GoString((*elem).extra_mime_headers),
-			Record:           (*elem),
+			record:           (*elem),
 		})
 	}
 
 	ego.Capacity = uint((*enum).capacity)
 	ego.Used = uint((*enum).used)
-	ego.File = &(*enum).file
+	ego.file = &(*enum).file
 
 	return ego
 }
 
-func (ego *Record) SetRecordRenaming(renaming string) {
-	ego.Record.renaming = C.CString(renaming)
-	ego.Renaming = strings.Clone(renaming)
-}
+/*
+Destroys RecordEnumerator.
 
-func (ego *Record) RecordToFile(export *Export, err int) (int, int) {
-	errC := C.int(0)
-	written := C.pst_record_to_file(ego.Record, export.ExportC, &errC)
-	return int(written), int(errC)
-}
-
-func (ego *Record) DestroyRecord() error {
-	if ego == nil || ego.Record == nil {
-		return fmt.Errorf("Record has been already destroyed.")
-	}
-	ego.Record = nil
-	return nil
-}
-
+Returns:
+  - Error, if RecordEnumerator has been already destroyed.
+*/
 func (ego *RecordEnumerator) DestroyRecordEnumerator() error {
 
 	if ego == nil || ego.recordEnumerator == nil {
@@ -258,17 +347,8 @@ func (ego *RecordEnumerator) DestroyRecordEnumerator() error {
 		ego.Items[i] = nil
 	}
 	ego.Items = nil
-	ego.File = nil
+	ego.file = nil
 	ego.recordEnumerator = nil
 
-	return nil
-}
-
-func (ego *Export) DestroyExport() error {
-	if ego == nil || ego.ExportC == nil {
-		return fmt.Errorf("Export has been already destroyed.")
-	}
-	C.pst_export_destroy(ego.ExportC)
-	ego.ExportC = nil
 	return nil
 }
