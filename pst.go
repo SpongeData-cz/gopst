@@ -256,7 +256,7 @@ Destroys individual Record.
 Returns:
   - Error, if Record has been already destroyed.
 */
-func (ego *Record) DestroyRecord() error {
+func (ego *Record) Destroy() error {
 	if ego == nil || ego.record == nil {
 		return fmt.Errorf("Record has been already destroyed.")
 	}
@@ -264,9 +264,29 @@ func (ego *Record) DestroyRecord() error {
 	return nil
 }
 
+/*
+Destroys a slice of Records.
+
+Parameters:
+  - records - slice of Records to be destroyed.
+
+Returns:
+  - error if any of the Record has already been destroyed.
+*/
+func DestroyList(records []*Record) error {
+	for i, record := range records {
+		err := record.Destroy()
+		records[i] = nil
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // RECORD ENUMERATOR
+// TODO: Rename to Pst?
 type RecordEnumerator struct {
-	Items            []*Record
 	Capacity         uint
 	Used             uint
 	file             *C.struct_pst_file
@@ -276,40 +296,49 @@ type RecordEnumerator struct {
 }
 
 /*
-Lists the contents of the Pst into a RecordEnumerator structure.
-
-The individual items of pst are listed in an array type field "Items".
-
-The RecordEnumerator structure must be destroyed
-by DestroyRecordEnumerator() call explicitly.
-
-Alternatively, it is possible to destroy individual Items of the RecordEnumerator
-structure by calling the DestroyRecord() function.
+Creates a new RecordEnumerator. Has to be deallocated with DestroyRecordEnumerator() method after use.
 
 Parameters:
-  - path - Path to the pst.
+  - path - path to the existing Pst.
 
 Returns:
-  - RecordEnumerator structure.
+  - Pointer to a new instance of RecordEnumerator.
 */
-func List(path string) *RecordEnumerator {
+func NewRecordEnumerator(path string) *RecordEnumerator {
 
 	ego := new(RecordEnumerator)
 
 	enum := C.pst_list(C.CString(path))
+	ego.recordEnumerator = enum
 
 	ego.LastError = C.GoString((*enum).last_error)
 	ego.NumError = int((*enum).num_error)
-	if ego.NumError != C.NO_ERROR {
+
+	if ego.NumError != NO_ERROR {
 		return ego
 	}
 
-	ego.recordEnumerator = enum
+	ego.Capacity = uint((*enum).capacity)
+	ego.Used = uint((*enum).used)
+	ego.file = &(*enum).file
 
-	ego.Items = make([]*Record, 0)
+	return ego
+}
 
-	for elem := (*enum).items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
-		ego.Items = append(ego.Items, &Record{
+/*
+Lists content of an Pst in form of arrays.
+
+Records must be destroyed by DestroyList() call explicitly.
+Alternatively, it is possible to destroy individual Records using the Destroy() function.
+
+Returns:
+  - Slice of Records.
+*/
+func (ego *RecordEnumerator) List() []*Record {
+	records := make([]*Record, 0)
+
+	for elem := ego.recordEnumerator.items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
+		records = append(records, &Record{
 			TypeOfRecord:     uint8((*elem)._type),
 			LogicalPath:      C.GoString((*elem).logical_path),
 			Name:             C.GoString((*elem).name),
@@ -318,12 +347,7 @@ func List(path string) *RecordEnumerator {
 			record:           (*elem),
 		})
 	}
-
-	ego.Capacity = uint((*enum).capacity)
-	ego.Used = uint((*enum).used)
-	ego.file = &(*enum).file
-
-	return ego
+	return records
 }
 
 /*
@@ -338,15 +362,13 @@ func (ego *RecordEnumerator) DestroyRecordEnumerator() error {
 		return fmt.Errorf("RecordEnumerator has been already destroyed.")
 	}
 
-	C.record_enumerator_destroy(ego.recordEnumerator)
-
-	for i, r := range ego.Items {
-		if err := r.DestroyRecord(); err != nil {
-			return err
-		}
-		ego.Items[i] = nil
+	if ego.NumError != NO_ERROR {
+		C.free(unsafe.Pointer(ego.recordEnumerator.items))
+		C.free(unsafe.Pointer(ego.recordEnumerator))
+	} else {
+		C.record_enumerator_destroy(ego.recordEnumerator)
 	}
-	ego.Items = nil
+
 	ego.file = nil
 	ego.recordEnumerator = nil
 
