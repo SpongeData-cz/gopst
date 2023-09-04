@@ -3,9 +3,7 @@ package gopst
 /*
 #cgo LDFLAGS: ./src/libgopst.a ./src/libpst.a -lz
 #cgo CFLAGS: -I./src/ -I./src/deps/libpst/ -I./src/deps/libpst/src/
-
 #include <define.h>
-
 #include "pst.h"
 #include <stdlib.h>
 */
