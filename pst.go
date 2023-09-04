@@ -128,7 +128,7 @@ Returns:
 */
 func NewExport(conf ExportConf) *Export {
 
-	exportC := C.pst_export_new(goExportConfToC(conf))
+	exportC := C.pst_export_new(*goExportConfToC(conf))
 	if exportC == nil {
 		return nil
 	}
@@ -145,7 +145,7 @@ Parameters:
 Returns:
   - Created C exportConf structure.
 */
-func goExportConfToC(goExportConf ExportConf) C.struct_pst_export_conf {
+func goExportConfToC(goExportConf ExportConf) *C.struct_pst_export_conf {
 	cExport := C.struct_pst_export_conf{
 		mode:                   C.int(goExportConf.Mode),
 		mode_MH:                C.int(goExportConf.ModeMH),
@@ -169,7 +169,7 @@ func goExportConfToC(goExportConf ExportConf) C.struct_pst_export_conf {
 		cExport.acceptable_extensions = C.CString(goExportConf.AcceptableExtensions)
 	}
 
-	return cExport
+	return &cExport
 }
 
 /*
@@ -208,6 +208,7 @@ func (ego *Export) DestroyExport() error {
 	if ego == nil || ego.pstExport == nil {
 		return fmt.Errorf("Export has been already destroyed.")
 	}
+	C.free(unsafe.Pointer(ego.pstExport.conf.acceptable_extensions)) // ?
 	C.pst_export_destroy(ego.pstExport)
 	ego.pstExport = nil
 	return nil
@@ -260,6 +261,7 @@ func (ego *Record) Destroy() error {
 	if ego == nil || ego.record == nil {
 		return fmt.Errorf("Record has been already destroyed.")
 	}
+	C.free(unsafe.Pointer(ego.record.renaming))
 	ego.record = nil
 	return nil
 }
@@ -307,8 +309,11 @@ Returns:
 func NewRecordEnumerator(path string) *RecordEnumerator {
 
 	ego := new(RecordEnumerator)
+	cPath := C.CString(path)
 
-	enum := C.pst_list(C.CString(path))
+	enum := C.pst_list(cPath)
+	C.free(unsafe.Pointer(cPath))
+
 	ego.recordEnumerator = enum
 
 	ego.LastError = C.GoString((*enum).last_error)
@@ -363,6 +368,7 @@ func (ego *RecordEnumerator) DestroyRecordEnumerator() error {
 	}
 
 	if ego.NumError != NO_ERROR {
+		ego.recordEnumerator.last_error = nil
 		C.free(unsafe.Pointer(ego.recordEnumerator.items))
 		C.free(unsafe.Pointer(ego.recordEnumerator))
 	} else {
