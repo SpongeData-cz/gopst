@@ -1,9 +1,10 @@
 package gopst
 
 /*
-#cgo LDFLAGS: ./src/libgopst.a ./src/libpst.a -lz
-#cgo CFLAGS: -I./src/ -I./src/deps/libpst/ -I./src/deps/libpst/src/
+#cgo LDFLAGS: ./src/libgopst.a /usr/local/lib/libpst.a -lz
+#cgo CFLAGS: -I./src/ -I/usr/local/include/libpst-4/libpst/
 
+#include <libpst.h>
 #include "pst.h"
 #include <stdlib.h>
 */
@@ -117,6 +118,7 @@ type ExportConf struct {
 
 /*
 Creates a new instance of the Export structure.
+Has to be deallocated with Destroy method after use.
 
 Parameters:
   - conf - Export Configuration.
@@ -202,7 +204,7 @@ Destroys Export.
 Returns:
   - Error, if Export has been already destroyed.
 */
-func (ego *Export) DestroyExport() error {
+func (ego *Export) Destroy() error {
 	if ego == nil || ego.pstExport == nil {
 		return fmt.Errorf("Export has been already destroyed.")
 	}
@@ -219,6 +221,7 @@ type Record struct {
 	Name             string
 	Renaming         string
 	ExtraMimeHeaders string
+	Err              int
 	record           *C.struct_pst_record
 }
 
@@ -240,13 +243,13 @@ Parameters:
   - export - Pst export.
 
 Return:
-  - 1, if successfully written, otherwise 0,
-  - numerical representation of error.
+  - 1, if successfully written, otherwise 0.
 */
-func (ego *Record) RecordToFile(export *Export) (int, int) {
-	errC := C.int(0)
-	written := C.pst_record_to_file(ego.record, export.pstExport, &errC)
-	return int(written), int(errC)
+func (ego *Record) RecordToFile(export *Export) int {
+	err := C.int(0)
+	written := C.pst_record_to_file(ego.record, export.pstExport, &err)
+	ego.Err = int(err)
+	return int(written)
 }
 
 /*
@@ -260,6 +263,7 @@ func (ego *Record) Destroy() error {
 		return fmt.Errorf("Record has been already destroyed.")
 	}
 	C.free(unsafe.Pointer(ego.record.renaming))
+	ego.record.renaming = nil
 	ego.record = nil
 	return nil
 }
@@ -284,46 +288,45 @@ func DestroyList(records []*Record) error {
 	return nil
 }
 
-// RECORD ENUMERATOR
-// TODO: Rename to Pst?
-type RecordEnumerator struct {
-	Capacity         uint
-	Used             uint
-	file             *C.struct_pst_file
-	LastError        string
-	NumError         int
-	recordEnumerator *C.struct_pst_record_enumerator
+// PST
+type Pst struct {
+	Capacity  uint
+	Used      uint
+	file      *C.struct_pst_file
+	LastError string
+	NumError  int
+	pst       *C.struct_pst_record_enumerator
 }
 
 /*
-Creates a new RecordEnumerator. Has to be deallocated with DestroyRecordEnumerator() method after use.
+Creates a new Pst.
+Has to be deallocated with Destroy method after use.
 
 Parameters:
   - path - path to the existing Pst.
 
 Returns:
-  - Pointer to a new instance of RecordEnumerator.
+  - Pointer to a new instance of Pst.
 */
-func NewRecordEnumerator(path string) *RecordEnumerator {
+func NewPst(path string) *Pst {
 
-	ego := new(RecordEnumerator)
+	ego := new(Pst)
+
 	cPath := C.CString(path)
-
-	enum := C.pst_list(cPath)
+	pst := C.pst_list(cPath)
 	C.free(unsafe.Pointer(cPath))
 
-	ego.recordEnumerator = enum
+	ego.pst = pst
 
-	ego.LastError = C.GoString((*enum).last_error)
-	ego.NumError = int((*enum).num_error)
-
+	ego.LastError = C.GoString((*pst).last_error)
+	ego.NumError = int((*pst).num_error)
 	if ego.NumError != NO_ERROR {
 		return ego
 	}
 
-	ego.Capacity = uint((*enum).capacity)
-	ego.Used = uint((*enum).used)
-	ego.file = &(*enum).file
+	ego.Capacity = uint((*pst).capacity)
+	ego.Used = uint((*pst).used)
+	ego.file = &(*pst).file
 
 	return ego
 }
@@ -337,10 +340,10 @@ Alternatively, it is possible to destroy individual Records using the Destroy() 
 Returns:
   - Slice of Records.
 */
-func (ego *RecordEnumerator) List() []*Record {
+func (ego *Pst) List() []*Record {
 	records := make([]*Record, 0)
 
-	for elem := ego.recordEnumerator.items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
+	for elem := ego.pst.items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
 		records = append(records, &Record{
 			TypeOfRecord:     uint8((*elem)._type),
 			LogicalPath:      C.GoString((*elem).logical_path),
@@ -348,33 +351,34 @@ func (ego *RecordEnumerator) List() []*Record {
 			Renaming:         C.GoString((*elem).renaming),
 			ExtraMimeHeaders: C.GoString((*elem).extra_mime_headers),
 			record:           (*elem),
+			Err:              NO_ERROR,
 		})
 	}
 	return records
 }
 
 /*
-Destroys RecordEnumerator.
+Destroys Pst.
 
 Returns:
-  - Error, if RecordEnumerator has been already destroyed.
+  - Error, if Pst has been already destroyed.
 */
-func (ego *RecordEnumerator) DestroyRecordEnumerator() error {
+func (ego *Pst) Destroy() error {
 
-	if ego == nil || ego.recordEnumerator == nil {
-		return fmt.Errorf("RecordEnumerator has been already destroyed.")
+	if ego == nil || ego.pst == nil {
+		return fmt.Errorf("Pst has been already destroyed.")
 	}
 
 	if ego.NumError != NO_ERROR {
-		ego.recordEnumerator.last_error = nil
-		C.free(unsafe.Pointer(ego.recordEnumerator.items))
-		C.free(unsafe.Pointer(ego.recordEnumerator))
+		ego.pst.last_error = nil
+		C.free(unsafe.Pointer(ego.pst.items))
+		C.free(unsafe.Pointer(ego.pst))
 	} else {
-		C.record_enumerator_destroy(ego.recordEnumerator)
+		C.record_enumerator_destroy(ego.pst)
 	}
 
 	ego.file = nil
-	ego.recordEnumerator = nil
+	ego.pst = nil
 
 	return nil
 }
