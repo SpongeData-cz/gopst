@@ -364,28 +364,23 @@ pst_record * pst_record_interpret(pst_item * pi, pst_file * pf) {
 
     /* TODO: !!!
     Handle:
-        case PST_TYPE_STICKYNOTE:
-        case PST_TYPE_TASK:
-        case PST_TYPE_OTHER:
-
-    */
-
-   switch (item->type)
-   {
+    switch (item->type)
+    {
     case PST_TYPE_STICKYNOTE:
-        printf("STICKYNOTE\n");
+        // printf("STICKYNOTE\n");
     break;
     case PST_TYPE_TASK:
-        printf("TYPE_TASK\n");
+        // printf("TYPE_TASK\n");
     break;
     case PST_TYPE_OTHER:
-        printf("OTHER\n");
+        // printf("OTHER\n");
     break;
 
     default:
-        printf("UNKNOWN TYPE\n");
+        // printf("UNKNOWN TYPE\n");
     break;
    }
+   */
 
     // Unknown type
     return NULL;
