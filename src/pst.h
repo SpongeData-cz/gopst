@@ -1,7 +1,6 @@
 #ifndef PST_H
 #define PST_H
 
-#include "define.h"
 #include <regex.h>
 
 struct file_ll {
