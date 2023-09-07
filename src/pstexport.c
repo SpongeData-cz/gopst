@@ -119,7 +119,6 @@ void write_body_part(pst_export * self, FILE* f_output, pst_string *body, char *
     DEBUG_RET();
 }
 
-
 void write_normal_email(pst_export * self, FILE* f_output, char f_name[], pst_item* item, int mode, int mode_MH, pst_file* pst, int save_rtf, int embedding, char** extra_mime_headers)
 {
     char boundary[60];
@@ -1389,7 +1388,6 @@ int pst_export_conf_check (pst_export_conf c) {
 
 pst_export * pst_export_new(pst_export_conf conf) {
   if (!pst_export_conf_check(conf)) {
-    printf("BROKEN CONF!\n");
     return NULL;
   }
 
