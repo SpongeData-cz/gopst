@@ -1,7 +1,7 @@
 package gopst
 
 /*
-#cgo LDFLAGS: ./src/libgopst.so /usr/local/lib/libpst.a -lz
+#cgo LDFLAGS: /usr/local/lib/libgopst.a /usr/local/lib/libpst.a -lz
 #cgo CFLAGS: -I./src/ -I/usr/local/include/libpst-4/libpst/
 
 #include <libpst.h>
