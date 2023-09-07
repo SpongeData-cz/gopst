@@ -2,7 +2,7 @@
 PST_VER=libpst-0.6.76
 PST_DIR=libpst
 
-all: build
+all: libgopst.so libgopst.a example
 
 
 deps_clean:
@@ -25,7 +25,7 @@ pstexport.o: pstexport.c
 	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ -o $@ $<
 
 
-build:
+libgopst.so:
 	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pstexport.c pst.c
 #	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ pst.c -o pst.o
 	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o pst.o pstexport.o -lz -lpthread -shared -o libgopst.so
@@ -37,5 +37,9 @@ libgopst.a: pst.o pstexport.o
 libpst.a: deps
 	ar rcs $@ ./deps/libpst/src/.libs/*.o
 
-example: build
+example: libgopst.so
 	$(CC) -g -I./deps/libpst/ -I./deps/libpst/src/ ./deps/libpst/src/.libs/*.o -lz -lpthread pstexport.o pst.o example.c -o example.bin
+
+install: libgopst.a libgopst.so
+	mkdir -p /usr/local/lib/
+	cp libgopst.a libgopst.so /usr/local/lib/
