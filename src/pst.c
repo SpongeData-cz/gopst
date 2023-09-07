@@ -10,6 +10,7 @@
 #include <string.h>
 #include "define.h"
 #include "pst.h"
+#include <sys/stat.h>
 
 pst_record_enumerator * item_enumerator_new(unsigned capacity) {
     pst_record_enumerator * ret = calloc(1, sizeof(pst_record_enumerator));
@@ -231,8 +232,16 @@ pst_folder * pst_folder_new(pst_record pr) {
 };
 
 int pst_folder_to_file(pst_folder * self, pst_export *pe, int * error) {
+    int ret = mkdir(self->r.renaming, 0700);
     *error = NO_ERROR;
-    return 0; // unimplemented no reason - folder isnt file
+    
+    if (ret != 0){
+        *error = PST_MESSAGE_ERROR_FILE_ERROR;
+        printf("Im here\n");
+        return 0;
+    }
+    
+    return 1; // unimplemented no reason - folder isnt file
 }
 
 typedef struct pst_journal {
