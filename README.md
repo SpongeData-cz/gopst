@@ -187,3 +187,68 @@ const (
     ERROR_UNKNOWN_RECORD
 )
 ```
+
+# Example
+```go
+import (
+	"errors"
+	"fmt"
+
+	"github.com/SpongeData-cz/gopst"
+)
+
+func example() error {
+	path := "./fixtures/"
+
+	// Creates a new Pst
+	pst := gopst.NewPst(path + "sample.pst")
+	if pst.NumError != gopst.NO_ERROR {
+		return fmt.Errorf("NewPst failed with error %d", pst.NumError)
+	}
+
+	// Creates a new Export
+	export := gopst.NewExport(gopst.ExportConfDefault())
+	if export == nil {
+		pst.Destroy()
+		return errors.New("NewExport failed")
+	}
+
+	// Make slice of Records
+	records := pst.List()
+
+	for i, record := range records {
+		// Optional Records rename
+		record.SetRecordRenaming(path + fmt.Sprintf("out/output_%d.eml", i))
+		
+		// Record extraction
+		record.RecordToFile(export)
+	}
+
+	// Inspection of per-Record errors
+	for _, record := range records {
+		if record.Err != gopst.NO_ERROR {
+			fmt.Printf("WARNING %s, ERROR WITH NUMBER: %d\n", record.Name, record.Err)
+		}
+	}
+
+	// Correct Pst removal
+	if err := pst.Destroy(); err != nil {
+		export.Destroy()
+		gopst.DestroyList(records)
+		return err
+	}
+
+	// Correct Records removal
+	if err := gopst.DestroyList(records); err != nil {
+		export.Destroy()
+		return err
+	}
+
+	// Correct Export removal
+	if err := export.Destroy(); err != nil {
+		return err
+	}
+
+	return nil
+}
+```
