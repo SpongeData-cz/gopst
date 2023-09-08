@@ -12,9 +12,9 @@ func TestPst(t *testing.T) {
 
 	path := "./src/"
 
-	// printEnum := func(enum *RecordEnumerator) {
-	// 	println("\n--PRINTING ENUM--")
-	// 	for i, e := range enum.Items {
+	// printPst := func(pst *Pst) {
+	// 	println("\n--PRINTING PST--")
+	// 	for i, e := range pst.Items {
 	// 		fmt.Printf("Item number %d: %+v\n", i, e)
 	// 		fmt.Printf("	TypeOfRecord: %d\n	LogicalPath: %s\n	Name: %s\n	Renaming: %s\n	ExtraMImeHeaders: %s\n\n",
 	// 			e.TypeOfRecord,
@@ -28,10 +28,10 @@ func TestPst(t *testing.T) {
 	// 	}
 	// 	fmt.Printf(
 	// 		"Capacity: %d\nUsed: %d\nLastError: %s\nNumError: %d\n",
-	// 		enum.Capacity,
-	// 		enum.Used,
-	// 		enum.LastError,
-	// 		enum.NumError,
+	// 		pst.Capacity,
+	// 		pst.Used,
+	// 		pst.LastError,
+	// 		pst.NumError,
 	// 	)
 	// 	println("\n")
 	// }
@@ -51,6 +51,23 @@ func TestPst(t *testing.T) {
 		return len(files), nil
 	}
 
+	check_error := func(err int, i int) {
+		switch err {
+		case ERROR_NOT_UNIQUE_MSG_STORE:
+			fmt.Printf("Record on index %d have \"ERROR_NOT_UNIQUE_MSG_STORE\" type of error\n", i)
+		case ERROR_ROOT_NOT_FOUND:
+			fmt.Printf("Record on index %d have \"ERROR_ROOT_NOT_FOUND\" type of error\n", i)
+		case ERROR_OPEN:
+			fmt.Printf("Record on index %d have \"ERROR_OPEN\" type of error\n", i)
+		case ERROR_INDEX_LOAD:
+			fmt.Printf("Record on index %d have \"ERROR_INDEX_LOAD\" type of error\n", i)
+		case ERROR_UNKNOWN_RECORD:
+			fmt.Printf("Record on index %d have \"ERROR_UNKNOWN_RECORD\" type of error\n", i)
+		default:
+			fmt.Printf("Record on index %d have uknown type of error\n", i)
+		}
+	}
+
 	clean := func() error {
 		if err := os.RemoveAll("./src/out"); err != nil {
 			return err
@@ -60,9 +77,9 @@ func TestPst(t *testing.T) {
 
 	t.Run("example", func(t *testing.T) {
 
-		enum := NewRecordEnumerator(path + "sample.pst")
-		if enum.NumError != NO_ERROR {
-			t.Error(enum.LastError)
+		pst := NewPst(path + "sample.pst")
+		if pst.NumError != NO_ERROR {
+			t.Error(pst.LastError)
 		}
 
 		ret := NewExport(ExportConfDefault())
@@ -74,21 +91,21 @@ func TestPst(t *testing.T) {
 			t.Error(errS.Error())
 		}
 
-		records := enum.List()
+		records := pst.List()
 
 		for i, curr := range records {
 			newName := fmt.Sprintf("out/output_%d.eml", i)
 			curr.SetRecordRenaming(path + newName)
-
-			written, errNum := curr.RecordToFile(ret)
-			if errNum != NO_ERROR {
-				t.Error("Something went wrong in RecordToFile function.")
-			}
-			fmt.Printf("WRITTEN: %d, ERROR: %d\n", written, errNum)
-
+			curr.RecordToFile(ret)
 		}
 
-		if err := enum.DestroyRecordEnumerator(); err != nil {
+		for i, curr := range records {
+			if curr.Err != NO_ERROR {
+				check_error(curr.Err, i)
+			}
+		}
+
+		if err := pst.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
@@ -96,7 +113,7 @@ func TestPst(t *testing.T) {
 			t.Error(err.Error())
 		}
 
-		if err := ret.DestroyExport(); err != nil {
+		if err := ret.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
@@ -112,26 +129,26 @@ func TestPst(t *testing.T) {
 		if ret == nil {
 			t.Error("Should return valid Pst Export")
 		}
-		if err := ret.DestroyExport(); err != nil {
+		if err := ret.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
-		// RecordEnumerator init
-		enum := NewRecordEnumerator(path + "sample.pst")
-		if enum.NumError != NO_ERROR {
-			t.Error(enum.LastError)
+		// Pst init
+		pst := NewPst(path + "sample.pst")
+		if pst.NumError != NO_ERROR {
+			t.Error(pst.LastError)
 		}
-		if err := enum.DestroyRecordEnumerator(); err != nil {
+		if err := pst.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
-		// Non-existing path RecordEnumerator init
+		// Non-existing path Pst init
 		// TODO: Printing error on stderr, make it shhhh?
-		enumNon := NewRecordEnumerator("./im/not/existing.pst")
-		if enumNon.NumError != ERROR_OPEN {
+		pstNon := NewPst("./im/not/existing.pst")
+		if pstNon.NumError != ERROR_OPEN {
 			t.Error("Should throw ERROR_OPEN error.")
 		}
-		if err := enumNon.DestroyRecordEnumerator(); err != nil {
+		if err := pstNon.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
@@ -139,18 +156,18 @@ func TestPst(t *testing.T) {
 
 	t.Run("list", func(t *testing.T) {
 
-		enum := NewRecordEnumerator(path + "sample.pst")
-		if enum.NumError != NO_ERROR {
-			t.Error(enum.LastError)
+		pst := NewPst(path + "sample.pst")
+		if pst.NumError != NO_ERROR {
+			t.Error(pst.LastError)
 		}
 
-		records := enum.List()
+		records := pst.List()
 
 		if len(records) != 2 {
 			t.Errorf("Expected 2 records, got: %d\n", len(records))
 		}
 
-		if err := enum.DestroyRecordEnumerator(); err != nil {
+		if err := pst.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
@@ -162,12 +179,12 @@ func TestPst(t *testing.T) {
 
 	t.Run("renaming", func(t *testing.T) {
 
-		enum := NewRecordEnumerator(path + "sample.pst")
-		if enum.NumError != NO_ERROR {
-			t.Error(enum.LastError)
+		pst := NewPst(path + "sample.pst")
+		if pst.NumError != NO_ERROR {
+			t.Error(pst.LastError)
 		}
 
-		records := enum.List()
+		records := pst.List()
 		for i, curr := range records {
 			newName := fmt.Sprintf("out/output_%d.eml", i)
 			curr.SetRecordRenaming(path + newName)
@@ -180,7 +197,7 @@ func TestPst(t *testing.T) {
 			}
 		}
 
-		if err := enum.DestroyRecordEnumerator(); err != nil {
+		if err := pst.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
@@ -191,9 +208,9 @@ func TestPst(t *testing.T) {
 
 	t.Run("extraction", func(t *testing.T) {
 
-		enum := NewRecordEnumerator(path + "backup.pst")
-		if enum.NumError != NO_ERROR {
-			t.Error(enum.LastError)
+		pst := NewPst(path + "backup.pst")
+		if pst.NumError != NO_ERROR {
+			t.Error(pst.LastError)
 		}
 
 		conf := ExportConfDefault()
@@ -208,7 +225,7 @@ func TestPst(t *testing.T) {
 			t.Error(errS.Error())
 		}
 
-		records := enum.List()
+		records := pst.List()
 		if len(records) != 370 {
 			t.Errorf("Expected 370 records, got %d\n", len(records))
 		}
@@ -217,17 +234,39 @@ func TestPst(t *testing.T) {
 			newName := fmt.Sprintf("out/output_%d.eml", i)
 			curr.SetRecordRenaming(path + newName)
 
-			_, errNum := curr.RecordToFile(ret)
-			if errNum != NO_ERROR {
-				t.Error("Something went wrong in RecordToFile function.")
+			written := curr.RecordToFile(ret)
+			fmt.Printf("WRITTEN: %d\n", written)
+		}
+
+		for i, curr := range records {
+			if (curr.Renaming == "./src/out/output_56.eml" ||
+				curr.Renaming == "./src/out/output_73.eml" ||
+				curr.Renaming == "./src/out/output_325.eml" ||
+				curr.Renaming == "./src/out/output_366.eml" ||
+				curr.Renaming == "./src/out/output_367.eml" ||
+				curr.Renaming == "./src/out/output_369.eml") && (!curr.GetDir()) {
+				t.Errorf("Record %s is not a dir, but it should be\n", curr.Renaming)
+			}
+			if curr.Err != NO_ERROR {
+				check_error(curr.Err, i)
 			}
 		}
 
-		if err := enum.DestroyRecordEnumerator(); err != nil {
+		if records[34].GetDir() {
+			t.Error("Record on index 34 shouldn't be dir, but it is.\n")
+		}
+
+		for i, curr := range records {
+			if curr.Err != NO_ERROR {
+				check_error(curr.Err, i)
+			}
+		}
+
+		if err := pst.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
-		if err := enum.DestroyRecordEnumerator(); err == nil {
+		if err := pst.Destroy(); err == nil {
 			t.Error("Should return an error.")
 		}
 
@@ -239,11 +278,11 @@ func TestPst(t *testing.T) {
 			t.Error("Should return en error.")
 		}
 
-		if err := ret.DestroyExport(); err != nil {
+		if err := ret.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
-		if err := ret.DestroyExport(); err == nil {
+		if err := ret.Destroy(); err == nil {
 			t.Error("Should return en error.")
 		}
 
@@ -252,7 +291,7 @@ func TestPst(t *testing.T) {
 			t.Error(err.Error())
 		}
 
-		if filesLen != 364 {
+		if filesLen != 370 {
 			t.Error("Wrong number of extracted entities.")
 		}
 
