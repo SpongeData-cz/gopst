@@ -10,41 +10,17 @@ import (
 
 func TestPst(t *testing.T) {
 
-	path := "./src/"
-
-	// printPst := func(pst *Pst) {
-	// 	println("\n--PRINTING PST--")
-	// 	for i, e := range pst.Items {
-	// 		fmt.Printf("Item number %d: %+v\n", i, e)
-	// 		fmt.Printf("	TypeOfRecord: %d\n	LogicalPath: %s\n	Name: %s\n	Renaming: %s\n	ExtraMImeHeaders: %s\n\n",
-	// 			e.TypeOfRecord,
-	// 			// e.PFile,
-	// 			// e.PItem,
-	// 			e.LogicalPath,
-	// 			e.Name,
-	// 			e.Renaming,
-	// 			e.ExtraMimeHeaders,
-	// 		)
-	// 	}
-	// 	fmt.Printf(
-	// 		"Capacity: %d\nUsed: %d\nLastError: %s\nNumError: %d\n",
-	// 		pst.Capacity,
-	// 		pst.Used,
-	// 		pst.LastError,
-	// 		pst.NumError,
-	// 	)
-	// 	println("\n")
-	// }
+	path := "./fixtures/"
 
 	setup := func() error {
-		if err := os.Mkdir("./src/out", os.ModePerm); err != nil {
+		if err := os.Mkdir(path+"out", os.ModePerm); err != nil {
 			return err
 		}
 		return nil
 	}
 
 	read := func() (int, error) {
-		files, err := os.ReadDir("./src/out")
+		files, err := os.ReadDir(path + "out")
 		if err != nil {
 			return 0, err
 		}
@@ -69,7 +45,7 @@ func TestPst(t *testing.T) {
 	}
 
 	clean := func() error {
-		if err := os.RemoveAll("./src/out"); err != nil {
+		if err := os.RemoveAll(path + "out"); err != nil {
 			return err
 		}
 		return nil
@@ -239,12 +215,12 @@ func TestPst(t *testing.T) {
 		}
 
 		for i, curr := range records {
-			if (curr.Renaming == "./src/out/output_56.eml" ||
-				curr.Renaming == "./src/out/output_73.eml" ||
-				curr.Renaming == "./src/out/output_325.eml" ||
-				curr.Renaming == "./src/out/output_366.eml" ||
-				curr.Renaming == "./src/out/output_367.eml" ||
-				curr.Renaming == "./src/out/output_369.eml") && (!curr.GetDir()) {
+			if (curr.Renaming == "./fixtures/out/output_56.eml" ||
+				curr.Renaming == "./fixtures/out/output_73.eml" ||
+				curr.Renaming == "./fixtures/out/output_325.eml" ||
+				curr.Renaming == "./fixtures/out/output_366.eml" ||
+				curr.Renaming == "./fixtures/out/output_367.eml" ||
+				curr.Renaming == "./fixtures/out/output_369.eml") && (!curr.GetDir()) {
 				t.Errorf("Record %s is not a dir, but it should be\n", curr.Renaming)
 			}
 			if curr.Err != NO_ERROR {
