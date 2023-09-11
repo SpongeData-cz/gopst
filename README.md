@@ -7,10 +7,10 @@ Libpst tools (pst parsing) integration.
 ```bash
 cd src
 make deps
-cd deps/libpst
+# cd deps/libpst
 sudo apt install libgsf-1-dev
-./configure --enable-python=no --enable-libpst-shared=yes
-make
+#./configure --enable-python=no --enable-libpst-shared=yes
+make build_pst
 sudo make install
 sudo cp define.h config.h /usr/local/include/libpst-4/libpst
 cd ../..
@@ -118,7 +118,7 @@ if export == nil {
 ## List
 The next step is the *List* method. This method lists content of an pst in form of arrays.
 
-Records must be destroyed by *DestroyList* call explicitly. 
+Records must be destroyed by *DestroyList* call explicitly.
 
 Alternatively, it is possible to destroy individual records using the *Destroy* function.
 ```go
@@ -219,7 +219,7 @@ func example() error {
 	for i, record := range records {
 		// Optional Records rename
 		record.SetRecordRenaming(path + fmt.Sprintf("out/output_%d.eml", i))
-		
+
 		// Record extraction
 		record.RecordToFile(export)
 	}
