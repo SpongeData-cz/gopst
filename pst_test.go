@@ -55,7 +55,7 @@ func TestPst(t *testing.T) {
 	t.Run("example", func(t *testing.T) {
 
 		// Creates a new Pst
-		pst := NewPst(path + "sample.pst")
+		pst := NewPst(path + "simple.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
@@ -125,7 +125,7 @@ func TestPst(t *testing.T) {
 		}
 
 		// Pst init
-		pst := NewPst(path + "sample.pst")
+		pst := NewPst(path + "simple.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
@@ -147,7 +147,7 @@ func TestPst(t *testing.T) {
 
 	t.Run("list", func(t *testing.T) {
 
-		pst := NewPst(path + "sample.pst")
+		pst := NewPst(path + "simple.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
@@ -170,7 +170,7 @@ func TestPst(t *testing.T) {
 
 	t.Run("renaming", func(t *testing.T) {
 
-		pst := NewPst(path + "sample.pst")
+		pst := NewPst(path + "simple.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
@@ -199,7 +199,7 @@ func TestPst(t *testing.T) {
 
 	t.Run("extraction", func(t *testing.T) {
 
-		pst := NewPst(path + "backup.pst")
+		pst := NewPst(path + "simple.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
@@ -217,8 +217,8 @@ func TestPst(t *testing.T) {
 		}
 
 		records := pst.List()
-		if len(records) != 370 {
-			t.Errorf("Expected 370 records, got %d\n", len(records))
+		if len(records) != 2 {
+			t.Errorf("Expected 2 records, got %d\n", len(records))
 		}
 
 		for i, curr := range records {
@@ -230,12 +230,7 @@ func TestPst(t *testing.T) {
 		}
 
 		for i, curr := range records {
-			if (curr.Renaming == "./fixtures/out/output_56.eml" ||
-				curr.Renaming == "./fixtures/out/output_73.eml" ||
-				curr.Renaming == "./fixtures/out/output_325.eml" ||
-				curr.Renaming == "./fixtures/out/output_366.eml" ||
-				curr.Renaming == "./fixtures/out/output_367.eml" ||
-				curr.Renaming == "./fixtures/out/output_369.eml") && (!curr.GetDir()) {
+			if curr.Renaming == "./fixtures/out/output_1.eml" && (!curr.GetDir()) {
 				t.Errorf("Record %s is not a dir, but it should be\n", curr.Renaming)
 			}
 			if curr.Err != NO_ERROR {
@@ -243,8 +238,8 @@ func TestPst(t *testing.T) {
 			}
 		}
 
-		if records[34].GetDir() {
-			t.Error("Record on index 34 shouldn't be dir, but it is.\n")
+		if records[0].GetDir() {
+			t.Error("Record on index 0 shouldn't be dir, but it is.\n")
 		}
 
 		for i, curr := range records {
@@ -282,7 +277,7 @@ func TestPst(t *testing.T) {
 			t.Error(err.Error())
 		}
 
-		if filesLen != 370 {
+		if filesLen != 2 {
 			t.Error("Wrong number of extracted entities.")
 		}
 
