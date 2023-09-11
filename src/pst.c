@@ -237,7 +237,6 @@ int pst_folder_to_file(pst_folder * self, pst_export *pe, int * error) {
     
     if (ret != 0){
         *error = PST_MESSAGE_ERROR_FILE_ERROR;
-        printf("Im here\n");
         return 0;
     }
     
