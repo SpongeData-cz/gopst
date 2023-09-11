@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/SpongeData-cz/gopst"
 	. "github.com/SpongeData-cz/gopst"
 )
 
@@ -53,13 +54,16 @@ func TestPst(t *testing.T) {
 
 	t.Run("example", func(t *testing.T) {
 
+		// Creates a new Pst
 		pst := NewPst(path + "sample.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
 
-		ret := NewExport(ExportConfDefault())
-		if ret == nil {
+		// Creates a new Export
+		export := NewExport(ExportConfDefault())
+		if export == nil {
+			pst.Destroy()
 			t.Error("Should return valid Pst Export")
 		}
 
@@ -67,29 +71,40 @@ func TestPst(t *testing.T) {
 			t.Error(errS.Error())
 		}
 
+		// Make slice of Records
 		records := pst.List()
 
 		for i, curr := range records {
+			// Optional Records rename
 			newName := fmt.Sprintf("out/output_%d.eml", i)
 			curr.SetRecordRenaming(path + newName)
-			curr.RecordToFile(ret)
+
+			// Record extraction
+			curr.RecordToFile(export)
 		}
 
+		// Inspection of per-Record errors
 		for i, curr := range records {
 			if curr.Err != NO_ERROR {
 				check_error(curr.Err, i)
 			}
 		}
 
+		// Correct Pst removal
 		if err := pst.Destroy(); err != nil {
+			export.Destroy()
+			gopst.DestroyList(records)
 			t.Error(err.Error())
 		}
 
+		// Correct Records removal
 		if err := DestroyList(records); err != nil {
+			export.Destroy()
 			t.Error(err.Error())
 		}
 
-		if err := ret.Destroy(); err != nil {
+		// Correct Export removal
+		if err := export.Destroy(); err != nil {
 			t.Error(err.Error())
 		}
 
