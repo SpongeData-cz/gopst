@@ -14,8 +14,8 @@ make
 sudo make install
 sudo cp define.h config.h /usr/local/include/libpst-4/libpst
 cd ../..
-make all
-make install # ?
+make
+make install
 ```
 
 # Usage
