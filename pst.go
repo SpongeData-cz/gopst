@@ -229,10 +229,7 @@ type Record struct {
 Predicate - is directory?
 */
 func (ego *Record) GetDir() bool {
-	if typeOfRcrd := uint8(ego.record._type); typeOfRcrd == 4 {
-		return true
-	}
-	return false
+	return uint8(ego.record._type) == 4
 }
 
 /*
