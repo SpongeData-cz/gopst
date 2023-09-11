@@ -15,8 +15,8 @@ deps:
 	ln -s $(PST_VER) deps/$(PST_DIR)
 
 build_pst:
-	cd deps/$(PST_DIR) && ./configure --enable-python=no
-	cd deps/$(PST_DIR) && make
+	cd deps/$(PST_DIR) && ./configure --enable-python=no --enable-libpst-shared=yes
+	cd deps/$(PST_DIR) && make -j16
 
 pst.o: pst.c
 	$(CC) -c -fPIC -Wall -g -I./deps/libpst/ -I./deps/libpst/src/ -o $@ $<
@@ -43,3 +43,7 @@ example: libgopst.so
 install: libgopst.a libgopst.so
 	mkdir -p /usr/local/lib/
 	cp libgopst.a libgopst.so /usr/local/lib/
+	cp ./deps/libpst/config.h ./deps/libpst/src/define.h /usr/local/include/libpst-4/libpst
+
+install_libpst: build_pst
+	cd ./deps/libpst/ && sudo make install
