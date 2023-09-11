@@ -80,7 +80,7 @@ type ExportConf struct {
 * **OTMODE_APPOINTMENT**
 * **OTMODE_JOURNAL**
 * **OTMODE_CONTACT**
-
+* **OTMODE_ALL**
 
 ### Export Configuration default settings
 ```go
@@ -93,8 +93,8 @@ func ExportConfDefault() ExportConf {
 		ModeThunder:          0,
 		OutputMode:           OUTPUT_NORMAL,
 		ContactMode:          CMODE_VCARD,
-		DeletedMode:          DMODE_EXCLUDE,
-		OutputTypeMode:       0xff, // all
+		DeletedMode:          DMODE_INCLUDE,
+		OutputTypeMode:       OTMODE_ALL,
 		ContactModeSpecified: 0,
 		Overwrite:            0,
 		PreferUtf8:           1,
@@ -185,6 +185,14 @@ const (
     ERROR_OPEN
     ERROR_INDEX_LOAD
     ERROR_UNKNOWN_RECORD
+)
+
+/*
+Record to file errors.
+*/
+const (
+	PST_MESSAGE_ERROR_FILE_ERROR = iota + 1
+	PST_MESSAGE_ERROR_UNSUPPORTED_PARAM
 )
 ```
 
