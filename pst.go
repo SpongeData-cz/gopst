@@ -33,6 +33,14 @@ const (
 	ERROR_UNKNOWN_RECORD
 )
 
+/*
+Record to file errors.
+*/
+const (
+	PST_MESSAGE_ERROR_FILE_ERROR = iota + 1
+	PST_MESSAGE_ERROR_UNSUPPORTED_PARAM
+)
+
 // EXPORT
 const (
 	/*
@@ -54,6 +62,7 @@ const (
 		Separate mode creates the same directory structure as recurse. The emails are stored in
 		separate files, numbering from 1 upward. Attachments belonging to the emails are
 		saved as email_no-filename (e.g. 1-samplefile.doc or 1-Attachment2.zip).
+		Unsupported parameter in pst_message_to_file().
 	*/
 	MODE_SEPARATE
 )
@@ -93,6 +102,7 @@ const (
 	OTMODE_APPOINTMENT
 	OTMODE_JOURNAL
 	OTMODE_CONTACT
+	OTMODE_ALL = 0xff
 )
 
 type Export struct {
@@ -187,8 +197,8 @@ func ExportConfDefault() ExportConf {
 		ModeThunder:          0,
 		OutputMode:           OUTPUT_NORMAL,
 		ContactMode:          CMODE_VCARD,
-		DeletedMode:          DMODE_EXCLUDE,
-		OutputTypeMode:       0xff, // all
+		DeletedMode:          DMODE_INCLUDE,
+		OutputTypeMode:       OTMODE_ALL,
 		ContactModeSpecified: 0,
 		Overwrite:            0,
 		PreferUtf8:           1,

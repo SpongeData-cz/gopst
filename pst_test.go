@@ -30,10 +30,10 @@ func TestPst(t *testing.T) {
 
 	check_error := func(err int, i int) {
 		switch err {
-		case ERROR_NOT_UNIQUE_MSG_STORE:
-			fmt.Printf("Record on index %d have \"ERROR_NOT_UNIQUE_MSG_STORE\" type of error\n", i)
-		case ERROR_ROOT_NOT_FOUND:
-			fmt.Printf("Record on index %d have \"ERROR_ROOT_NOT_FOUND\" type of error\n", i)
+		case PST_MESSAGE_ERROR_FILE_ERROR:
+			fmt.Printf("Record on index %d have \"PST_MESSAGE_ERROR_FILE_ERROR\" type of error\n", i)
+		case PST_MESSAGE_ERROR_UNSUPPORTED_PARAM:
+			fmt.Printf("Record on index %d have \"PST_MESSAGE_ERROR_UNSUPPORTED_PARAM\" type of error\n", i)
 		case ERROR_OPEN:
 			fmt.Printf("Record on index %d have \"ERROR_OPEN\" type of error\n", i)
 		case ERROR_INDEX_LOAD:
@@ -55,7 +55,7 @@ func TestPst(t *testing.T) {
 	t.Run("example", func(t *testing.T) {
 
 		// Creates a new Pst
-		pst := NewPst(path + "simple.pst")
+		pst := NewPst(path + "complex.pst")
 		if pst.NumError != NO_ERROR {
 			t.Error(pst.LastError)
 		}
