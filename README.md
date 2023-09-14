@@ -7,15 +7,10 @@ Libpst tools (pst parsing) integration.
 ```bash
 cd src
 make deps
-# cd deps/libpst
 sudo apt install libgsf-1-dev
-#./configure --enable-python=no --enable-libpst-shared=yes
 make build_pst
+sudo make install_libpst
 sudo make install
-sudo cp define.h config.h /usr/local/include/libpst-4/libpst
-cd ../..
-make
-make install
 ```
 
 # Usage
