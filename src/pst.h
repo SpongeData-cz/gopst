@@ -151,6 +151,7 @@ typedef struct pst_record
 
 typedef struct pst_record_enumerator {
     pst_record ** items;
+    pst_desc_tree *d_ptr;
     unsigned capacity;
     unsigned used;
     pst_file file;
@@ -175,9 +176,10 @@ typedef struct pst_record_enumerator {
 #define ERROR_INDEX_LOAD 4
 #define ERROR_UNKNOWN_RECORD 5
 
+pst_record_enumerator * record_enumerator_new(const char * path);
 extern pst_export * pst_export_new(pst_export_conf conf);
 void pst_export_destroy(pst_export * self);
-pst_record_enumerator * pst_list(const char * path);
+void pst_list(pst_record_enumerator * out);
 pst_record * pst_record_interpret(pst_item * pi, pst_file * pf);
 void pst_record_destroy(pst_record * self);
 int pst_record_to_file(pst_record * r, pst_export * e, int * error);

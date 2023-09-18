@@ -9,7 +9,9 @@ int main(int argc, char* const* argv) {
     }
 
     const char * path = argv[1];
-    pst_record_enumerator * ie = pst_list(path);
+    pst_record_enumerator *ie = record_enumerator_new(path);
+    pst_list(ie);
+
     pst_record ** lst = ie->items;
     pst_export * ppe = pst_export_new(pst_export_conf_default);
     ppe->pstfile = ie->file; // misconception

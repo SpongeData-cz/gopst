@@ -12,14 +12,60 @@
 #include "pst.h"
 #include <sys/stat.h>
 
-pst_record_enumerator * item_enumerator_new(unsigned capacity) {
-    pst_record_enumerator * ret = calloc(1, sizeof(pst_record_enumerator));
-    ret->capacity = (capacity > 1 ? 1024 : 1);
+pst_record_enumerator * record_enumerator_new(const char * path) {
+    pst_record_enumerator * out = calloc(1, sizeof(pst_record_enumerator));
+    out->capacity = (1 > 1 ? 1024 : 1);
 
-    ret->items = calloc(capacity, sizeof(pst_item*));
-    ret->used = 0;
+    out->items = calloc(1, sizeof(pst_item*));
+    out->used = 0;
+    out->d_ptr = NULL;
 
-    return ret;
+     if (pst_open(&(out->file), path, NULL)) {
+        out->last_error = "Cannot open file.";
+        out->num_error = ERROR_OPEN;
+        goto defer;
+    }
+
+    if (pst_load_index(&(out->file))) {
+        out->last_error = "Cannot load index.";
+        out->num_error = ERROR_INDEX_LOAD;
+        goto defer;
+    }
+
+    pst_load_extended_attributes(&(out->file));
+
+    pst_desc_tree  *d_ptr = out->file.d_head; // first record is main record
+    pst_item *item  = pst_parse_item(&out->file, d_ptr, NULL);
+
+    if (!item || !item->message_store) {
+        DEBUG_RET();
+        goto defer;
+    }
+
+    char *temp  = NULL; //temporary char pointer
+    // default the file_as to the same as the main filename if it doesn't exist
+    if (!item->file_as.str) {
+        if (!(temp = strrchr(path, '/')))
+            if (!(temp = strrchr(path, '\\')))
+                temp = (char*)path; // FIXME: strdup() ?
+            else
+                temp++; // get past the "\\"
+        else
+            temp++; // get past the "/"
+        item->file_as.str = strdup(temp);
+        item->file_as.is_utf8 = 1;
+    }
+
+    d_ptr = pst_getTopOfFolders(&out->file, item);
+    if (!d_ptr) {
+        out->last_error = "Root record not found.";
+        out->num_error = ERROR_ROOT_NOT_FOUND;
+        goto defer;
+    }
+    out->d_ptr = d_ptr;
+
+defer:
+    return out;
 }
 
 void record_enumerator_add(pst_record_enumerator * self, pst_record* record) {
@@ -93,60 +139,12 @@ int pst_list_impl(pst_record_enumerator *ie, char * path, pst_desc_tree *d_ptr) 
     return NO_ERROR;
 }
 
-pst_record_enumerator * pst_list(const char * path) {
-    pst_record_enumerator * out = item_enumerator_new(1); // TODO: change the default pool size?
-
-    if (pst_open(&(out->file), path, NULL)) {
-        out->last_error = "Cannot open file.";
-        out->num_error = ERROR_OPEN;
-        goto defer;
-    }
-
-    if (pst_load_index(&(out->file))) {
-        out->last_error = "Cannot load index.";
-        out->num_error = ERROR_INDEX_LOAD;
-        goto defer;
-    }
-
-    pst_load_extended_attributes(&(out->file));
-
-    pst_desc_tree  *d_ptr = out->file.d_head; // first record is main record
-    pst_item *item  = pst_parse_item(&out->file, d_ptr, NULL);
-
-    if (!item || !item->message_store) {
-        DEBUG_RET();
-        goto defer;
-    }
-
-    char *temp  = NULL; //temporary char pointer
-    // default the file_as to the same as the main filename if it doesn't exist
-    if (!item->file_as.str) {
-        if (!(temp = strrchr(path, '/')))
-            if (!(temp = strrchr(path, '\\')))
-                temp = (char*)path; // FIXME: strdup() ?
-            else
-                temp++; // get past the "\\"
-        else
-            temp++; // get past the "/"
-        item->file_as.str = strdup(temp);
-        item->file_as.is_utf8 = 1;
-    }
-
-    d_ptr = pst_getTopOfFolders(&out->file, item);
-    if (!d_ptr) {
-        out->last_error = "Root record not found.";
-        out->num_error = ERROR_ROOT_NOT_FOUND;
-        goto defer;
-    }
-
+void pst_list(pst_record_enumerator * out) {
     // traverse
-    out->num_error = pst_list_impl(out, "", d_ptr->child);
+    out->num_error = pst_list_impl(out, "", out->d_ptr->child);
     if (out->num_error) {
         out->last_error = "Traversing error.";
     }
-
-defer:
-    return out;
 }
 
 
@@ -160,6 +158,7 @@ int record_enumerator_destroy(pst_record_enumerator * ie) {
     pst_close(&ie->file);
     free(ie->items);
     ie->items = NULL;
+    ie->d_ptr = NULL;
     free(ie);
     return 0;
 }
