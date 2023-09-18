@@ -183,7 +183,6 @@ void pst_list(pst_record_enumerator * out);
 pst_record * pst_record_interpret(pst_item * pi, pst_file * pf);
 void pst_record_destroy(pst_record * self);
 int pst_record_to_file(pst_record * r, pst_export * e, int * error);
-int item_enumerator_destroy(pst_record_enumerator * ie);
 int record_enumerator_destroy(pst_record_enumerator * ie);
 
 static const pst_export_conf pst_export_conf_default = {
