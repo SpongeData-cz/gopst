@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SpongeData-cz/gopst"
 	. "github.com/SpongeData-cz/gopst"
 )
 
@@ -93,7 +92,7 @@ func TestPst(t *testing.T) {
 		// Correct Pst removal
 		if err := pst.Destroy(); err != nil {
 			export.Destroy()
-			gopst.DestroyList(records)
+			DestroyList(records)
 			t.Error(err.Error())
 		}
 

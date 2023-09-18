@@ -216,7 +216,7 @@ Returns:
 */
 func (ego *Export) Destroy() error {
 	if ego == nil || ego.pstExport == nil {
-		return fmt.Errorf("Export has been already destroyed.")
+		return fmt.Errorf("export has been already destroyed")
 	}
 	C.free(unsafe.Pointer(ego.pstExport.conf.acceptable_extensions)) // ?
 	C.pst_export_destroy(ego.pstExport)
@@ -277,7 +277,7 @@ Returns:
 */
 func (ego *Record) Destroy() error {
 	if ego == nil || ego.record == nil {
-		return fmt.Errorf("Record has been already destroyed.")
+		return fmt.Errorf("record has been already destroyed")
 	}
 	C.free(unsafe.Pointer(ego.record.renaming))
 	ego.record.renaming = nil
@@ -330,7 +330,7 @@ func NewPst(path string) *Pst {
 	ego := new(Pst)
 
 	cPath := C.CString(path)
-	pst := C.pst_list(cPath)
+	pst := C.record_enumerator_new(cPath)
 	C.free(unsafe.Pointer(cPath))
 
 	ego.pst = pst
@@ -359,6 +359,7 @@ Returns:
 */
 func (ego *Pst) List() []*Record {
 	records := make([]*Record, 0)
+	C.pst_list(ego.pst)
 
 	for elem := ego.pst.items; *elem != nil; elem = (**C.struct_pst_record)(unsafe.Add(unsafe.Pointer(elem), POINTER_SIZE)) {
 		records = append(records, &Record{
@@ -383,7 +384,7 @@ Returns:
 func (ego *Pst) Destroy() error {
 
 	if ego == nil || ego.pst == nil {
-		return fmt.Errorf("Pst has been already destroyed.")
+		return fmt.Errorf("pst has been already destroyed")
 	}
 
 	if ego.NumError != NO_ERROR {
