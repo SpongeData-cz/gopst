@@ -44,6 +44,7 @@ install: libgopst.a libgopst.so
 	mkdir -p /usr/local/lib/
 	cp libgopst.a libgopst.so /usr/local/lib/
 	cp ./deps/libpst/config.h ./deps/libpst/src/define.h /usr/local/include/libpst-4/libpst
+	ldconfig
 
 install_libpst: build_pst
 	cd ./deps/libpst/ && sudo make install
