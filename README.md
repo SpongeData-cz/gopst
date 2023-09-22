@@ -1,17 +1,9 @@
 # gopst
-Libpst tools (pst parsing) integration.
+Golang binding for a [libpst2](https://github.com/mafiosso/XADMaster) of a pseudo-forked project of [libpst](https://www.five-ten-sg.com/libpst/).
 
 # Installation
-## Building dependecies
-
-```bash
-cd src
-make deps
-sudo apt install libgsf-1-dev
-make build_pst
-sudo make install_libpst
-sudo make install
-```
+## Requirements
+[libpst2](https://github.com/SpongeData-cz/libpst2) installation.
 
 # Usage
 

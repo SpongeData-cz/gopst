@@ -1,11 +1,11 @@
 package gopst
 
 /*
-#cgo LDFLAGS: /usr/local/lib/libgopst.a /usr/local/lib/libpst.a -lz
-#cgo CFLAGS: -I./src/ -I/usr/local/include/libpst-4/libpst/
+#cgo LDFLAGS: -L/usr/local/lib/ -lpst -lz
+#cgo CFLAGS: -I/usr/local/include/libpst-5/libpst/
 
 #include <libpst.h>
-#include "pst.h"
+#include <pst.h>
 #include <stdlib.h>
 */
 import "C"
