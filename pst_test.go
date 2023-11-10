@@ -56,7 +56,7 @@ func TestPst(t *testing.T) {
 		// Creates a new Pst
 		pst := NewPst(path + "complex.pst")
 		if pst.NumError != NO_ERROR {
-			t.Error(pst.LastError)
+			t.Fatal(pst.LastError)
 		}
 
 		// Creates a new Export
